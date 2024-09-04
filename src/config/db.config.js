@@ -1,7 +1,8 @@
 // src/config/db.config.js
-require('dotenv').config(); // Load environment variables
+import dotenv from 'dotenv';
+dotenv.config(); // Load environment variables
 
-module.exports = {
+const dbConfig = {
   development: {
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -25,3 +26,5 @@ module.exports = {
     dialect: 'postgres',
   },
 };
+
+export default dbConfig;

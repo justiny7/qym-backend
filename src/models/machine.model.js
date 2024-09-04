@@ -1,6 +1,6 @@
-const { DataTypes } = require('sequelize');
+import DataTypes from 'sequelize';
 
-module.exports = (sequelize) => {
+export default (sequelize) => {
   // Define the Machine model
   const Machine = sequelize.define('Machine', {
     uuid: {

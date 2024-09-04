@@ -1,10 +1,10 @@
 // src/controllers/machine.controller.js
-const MachineService = require('../services/machine.service');
+import { createMachine, getAllMachines, getMachineById, updateMachine, deleteMachine } from '../services/machine.service.js';
 
 class MachineController {
   async createMachine(req, res) {
     try {
-      const machine = await MachineService.createMachine(req.body);
+      const machine = await createMachine(req.body);
       res.status(201).json(machine);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -13,7 +13,7 @@ class MachineController {
 
   async getMachineById(req, res) {
     try {
-      const machine = await MachineService.getMachineById(req.params.id);
+      const machine = await getMachineById(req.params.id);
       if (machine) {
         res.status(200).json(machine);
       } else {
@@ -26,7 +26,7 @@ class MachineController {
 
   async getAllMachines(req, res) {
     try {
-      const machines = await MachineService.getAllMachines();
+      const machines = await getAllMachines();
       res.status(200).json(machines);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -35,7 +35,7 @@ class MachineController {
 
   async updateMachine(req, res) {
     try {
-      const updated = await MachineService.updateMachine(req.params.id, req.body);
+      const updated = await updateMachine(req.params.id, req.body);
       if (updated) {
         res.status(200).json({ message: 'Machine updated successfully' });
       } else {
@@ -48,7 +48,7 @@ class MachineController {
 
   async deleteMachine(req, res) {
     try {
-      const deleted = await MachineService.deleteMachine(req.params.id);
+      const deleted = await deleteMachine(req.params.id);
       if (deleted) {
         res.status(200).json({ message: 'Machine deleted successfully' });
       } else {
@@ -60,4 +60,4 @@ class MachineController {
   }
 }
 
-module.exports = new MachineController();
+export default new MachineController();

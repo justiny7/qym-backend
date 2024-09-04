@@ -1,5 +1,9 @@
-const { Sequelize } = require('sequelize');
-const config = require('../config/db.config');
+import { Sequelize } from 'sequelize';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import config from '../config/db.config.js';
+
 const env = process.env.NODE_ENV || 'development';
 const dbConfig = config[env];
 
@@ -10,60 +14,23 @@ const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.p
   logging: false, // Set to true if you want to see SQL queries in the console
 });
 
-// Import models
-const Machine = require('./machine.model')(sequelize);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Setup associations (if you have any)
-// For example:
-// Machine.belongsTo(AnotherModel);
-// AnotherModel.hasMany(Machine);
-
-// Export Sequelize instance and models
-const db = {
-  Sequelize,
-  sequelize,
-  Machine,
-};
-
-module.exports = db;
-
-
-
-
-
-/*
-'use strict';
-
-const fs = require('fs');
-const path = require('path');
-const Sequelize = require('sequelize');
-const process = require('process');
-const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.js')[env];
 const db = {};
 
-let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
-} else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
+// Automatically import all models
+async function importModels() {
+  const routes = fs.readdirSync(__dirname)
+    .filter(file => file.indexOf('.') !== 0 && file !== 'index.js' && file.slice(-3) === '.js');
+
+  for (const file of routes) {
+    const model = await import(path.join(__dirname, file)).then(module => module.default(sequelize));
+    db[model.name] = model;
+  }
 }
 
-fs
-  .readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
-  .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
-  });
+importModels();
 
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
@@ -74,5 +41,4 @@ Object.keys(db).forEach(modelName => {
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
-module.exports = db;
-*/
+export default db;

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend for qymnasium software",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "npm run test",
     "start": "node src/server.js",

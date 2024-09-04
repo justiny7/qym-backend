@@ -1,10 +1,9 @@
 // src/services/machine.service.js
-const db = require('../models');  // Import models (including Machine)
+import db from '../models/index.js';  // Import models (including Machine)
 const { Machine } = db;
 
-
 // Create a new machine
-const createMachine = async (machineData) => {
+export const createMachine = async (machineData) => {
   try {
     const machine = await Machine.create(machineData);
     return machine;
@@ -14,7 +13,7 @@ const createMachine = async (machineData) => {
 };
 
 // Get all machines
-const getAllMachines = async () => {
+export const getAllMachines = async () => {
   try {
     const machines = await Machine.findAll();
     return machines;
@@ -24,7 +23,7 @@ const getAllMachines = async () => {
 };
 
 // Get a machine by ID
-const getMachineById = async (id) => {
+export const getMachineById = async (id) => {
   try {
     const machine = await Machine.findByPk(id);
     if (!machine) {
@@ -37,7 +36,7 @@ const getMachineById = async (id) => {
 };
 
 // Update a machine by ID
-const updateMachine = async (id, updateData) => {
+export const updateMachine = async (id, updateData) => {
   try {
     const machine = await Machine.findByPk(id);
     if (!machine) {
@@ -51,7 +50,7 @@ const updateMachine = async (id, updateData) => {
 };
 
 // Delete a machine by ID
-const deleteMachine = async (id) => {
+export const deleteMachine = async (id) => {
   try {
     const machine = await Machine.findByPk(id);
     if (!machine) {
@@ -62,13 +61,4 @@ const deleteMachine = async (id) => {
   } catch (error) {
     throw new Error(`Error deleting machine: ${error.message}`);
   }
-};
-
-// Export functions
-module.exports = {
-  createMachine,
-  getAllMachines,
-  getMachineById,
-  updateMachine,
-  deleteMachine,
 };
