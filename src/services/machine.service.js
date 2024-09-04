@@ -1,64 +1,113 @@
 // src/services/machine.service.js
-import db from '../models/index.js';  // Import models (including Machine)
-const { Machine } = db;
+import db from '../models/index.js';
+const { Machine, WorkoutLog, User } = db;
 
-// Create a new machine
-export const createMachine = async (machineData) => {
-  try {
-    const machine = await Machine.create(machineData);
-    return machine;
-  } catch (error) {
-    throw new Error(`Error creating machine: ${error.message}`);
-  }
-};
-
-// Get all machines
-export const getAllMachines = async () => {
-  try {
-    const machines = await Machine.findAll();
-    return machines;
-  } catch (error) {
-    throw new Error(`Error fetching machines: ${error.message}`);
-  }
-};
-
-// Get a machine by ID
-export const getMachineById = async (id) => {
-  try {
-    const machine = await Machine.findByPk(id);
-    if (!machine) {
-      throw new Error('Machine not found');
+class MachineService {
+  // Create a new machine
+  static async createMachine(machineData) {
+    try {
+      const machine = await Machine.create(machineData);
+      return machine;
+    } catch (error) {
+      throw new Error(`Error creating machine: ${error.message}`);
     }
-    return machine;
-  } catch (error) {
-    throw new Error(`Error fetching machine: ${error.message}`);
   }
-};
 
-// Update a machine by ID
-export const updateMachine = async (id, updateData) => {
-  try {
-    const machine = await Machine.findByPk(id);
-    if (!machine) {
-      throw new Error('Machine not found');
-    }
-    await machine.update(updateData);
-    return machine;
-  } catch (error) {
-    throw new Error(`Error updating machine: ${error.message}`);
-  }
-};
+  // Get a machine by ID
+  static async getMachineById(id) {
+    try {
+      const machine = await Machine.findOne({
+        where: { id },
+        include: [
+          {
+            model: WorkoutLog,
+            as: 'workoutLogs',
+            include: [
+              {
+                model: User,
+                as: 'user',
+              },
+            ],
+          },
+        ],
+      });
 
-// Delete a machine by ID
-export const deleteMachine = async (id) => {
-  try {
-    const machine = await Machine.findByPk(id);
-    if (!machine) {
-      throw new Error('Machine not found');
+      if (!machine) {
+        throw new Error('Machine not found');
+      }
+
+      return machine;
+    } catch (error) {
+      throw new Error(`Error retrieving machine: ${error.message}`);
     }
-    await machine.destroy();
-    return { message: 'Machine deleted successfully' };
-  } catch (error) {
-    throw new Error(`Error deleting machine: ${error.message}`);
   }
-};
+
+  // Update a machine by ID
+  static async updateMachine(id, updateData) {
+    try {
+      const [updated] = await Machine.update(updateData, {
+        where: { id },
+      });
+
+      if (!updated) {
+        throw new Error('Machine not found');
+      }
+
+      return await this.getMachineById(id);
+    } catch (error) {
+      throw new Error(`Error updating machine: ${error.message}`);
+    }
+  }
+
+  // Delete a machine by ID
+  static async deleteMachine(id) {
+    try {
+      const deleted = await Machine.destroy({
+        where: { id },
+      });
+
+      if (!deleted) {
+        throw new Error('Machine not found');
+      }
+
+      return `Machine with ID ${id} has been deleted`;
+    } catch (error) {
+      throw new Error(`Error deleting machine: ${error.message}`);
+    }
+  }
+
+  // Get all machines
+  static async getAllMachines() {
+    try {
+      const machines = await Machine.findAll({
+        include: [
+          {
+            model: WorkoutLog,
+            as: 'workoutLogs',
+            include: [
+              {
+                model: User,
+                as: 'user',
+              },
+            ],
+          },
+        ],
+      });
+      return machines;
+    } catch (error) {
+      throw new Error(`Error fetching machines: ${error.message}`);
+    }
+  }
+
+  // Get a machine's workout logs
+  static async getMachineWorkoutLogs(id) {
+    try {
+      const machine = await this.getMachineById(id);
+      return machine.workoutLogs;
+    } catch (error) {
+      throw new Error(`Error retrieving workout logs: ${error.message}`);
+    }
+  }
+}
+
+export default MachineService;

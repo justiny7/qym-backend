@@ -1,63 +1,72 @@
 // src/controllers/machine.controller.js
-import { createMachine, getAllMachines, getMachineById, updateMachine, deleteMachine } from '../services/machine.service.js';
+import MachineService from '../services/machine.service.js';
 
 class MachineController {
-  async createMachine(req, res) {
+  // Create a new machine
+  static async createMachine(req, res) {
     try {
-      const machine = await createMachine(req.body);
-      res.status(201).json(machine);
+      const machineData = req.body;
+      const newMachine = await MachineService.createMachine(machineData);
+      res.status(201).json(newMachine);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
-  async getMachineById(req, res) {
+  // Get a machine by ID
+  static async getMachineById(req, res) {
     try {
-      const machine = await getMachineById(req.params.id);
-      if (machine) {
-        res.status(200).json(machine);
-      } else {
-        res.status(404).json({ message: 'Machine not found' });
-      }
+      const { id } = req.params;
+      const machine = await MachineService.getMachineByUuid(id);
+      res.status(200).json(machine);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      res.status(404).json({ error: error.message });
     }
   }
 
-  async getAllMachines(req, res) {
+  // Update a machine by ID
+  static async updateMachine(req, res) {
     try {
-      const machines = await getAllMachines();
+      const { id } = req.params;
+      const updateData = req.body;
+      const updatedMachine = await MachineService.updateMachine(id, updateData);
+      res.status(200).json(updatedMachine);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Delete a machine by ID
+  static async deleteMachine(req, res) {
+    try {
+      const { id } = req.params;
+      const message = await MachineService.deleteMachine(id);
+      res.status(200).json({ message });
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  }
+
+  // Get all machines
+  static async getAllMachines(req, res) {
+    try {
+      const machines = await MachineService.getAllMachines();
       res.status(200).json(machines);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
-  async updateMachine(req, res) {
+  // Get a machine's workout logs
+  static async getMachineWorkoutLogs(req, res) {
     try {
-      const updated = await updateMachine(req.params.id, req.body);
-      if (updated) {
-        res.status(200).json({ message: 'Machine updated successfully' });
-      } else {
-        res.status(404).json({ message: 'Machine not found' });
-      }
+      const { id } = req.params;
+      const workoutLogs = await MachineService.getMachineWorkoutLogs(id);
+      res.status(200).json(workoutLogs);
     } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-
-  async deleteMachine(req, res) {
-    try {
-      const deleted = await deleteMachine(req.params.id);
-      if (deleted) {
-        res.status(200).json({ message: 'Machine deleted successfully' });
-      } else {
-        res.status(404).json({ message: 'Machine not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+      res.status(404).json({ error: error.message });
     }
   }
 }
 
-export default new MachineController();
+export default MachineController;

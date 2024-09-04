@@ -1,9 +1,10 @@
+// src/models/machine.model.js
 import DataTypes from 'sequelize';
 
 export default (sequelize) => {
   // Define the Machine model
   const Machine = sequelize.define('Machine', {
-    uuid: {
+    id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
@@ -30,11 +31,11 @@ export default (sequelize) => {
       defaultValue: 0,
     },
     average_usage_time: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.FLOAT,
       defaultValue: 0,
     },
     maintenance_status: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM('Good', 'Needs Maintenance', 'Under Repair'),
       defaultValue: 'Good',
     },
     location_inside_gym: {
@@ -44,17 +45,45 @@ export default (sequelize) => {
     reps: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      validate: {
+        min: 0
+      }
     },
     sets: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      validate: {
+        min: 0
+      }
     },
     manufacturer_details: {
-      type: DataTypes.TEXT,
+      type: DataTypes.JSONB,
     },
   }, {
     timestamps: true,  // Adds createdAt and updatedAt timestamps
   });
+
+  // Find all avaiable machines
+  Machine.findAvailable = function() {
+    return this.findAll({
+      where: {
+        active_status: true,
+        maintenance_status: 'Good'
+      }
+    });
+  };
+
+  Machine.associate = function(models) {
+    Machine.hasMany(models.WorkoutLog, {
+      foreignKey: 'machineId',
+      as: 'workoutLogs'
+    });
+
+    Machine.belongsTo(models.WorkoutLog, {
+      as: 'currentWorkoutLog',
+      foreignKey: 'currentWorkoutLogId',
+    });
+  };
 
   return Machine;
 };

@@ -1,3 +1,4 @@
+// src/models/index.js
 import { Sequelize } from 'sequelize';
 import fs from 'fs';
 import path from 'path';
@@ -21,16 +22,16 @@ const db = {};
 
 // Automatically import all models
 async function importModels() {
-  const routes = fs.readdirSync(__dirname)
+  const files = fs.readdirSync(__dirname)
     .filter(file => file.indexOf('.') !== 0 && file !== 'index.js' && file.slice(-3) === '.js');
 
-  for (const file of routes) {
+  for (const file of files) {
     const model = await import(path.join(__dirname, file)).then(module => module.default(sequelize));
     db[model.name] = model;
   }
 }
 
-importModels();
+await importModels();
 
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {

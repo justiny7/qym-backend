@@ -6,7 +6,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
 import { fileURLToPath } from 'url';
-import db from './models/index.js'; // Adjust the path as needed
+import db from './models/index.js';
 
 const app = express();
 
@@ -33,7 +33,7 @@ fs.readdirSync(routesPath).forEach((file) => {
 });
 
 // Sync PostgreSQL tables
-db.sequelize.sync({ force: false }) // Use force: true to drop and recreate tables each time
+db.sequelize.sync({ force: true }) // Use force: true to drop and recreate tables each time (ONLY IN DEV)
   .then(() => {
     console.log('Database & tables created!');
   })
