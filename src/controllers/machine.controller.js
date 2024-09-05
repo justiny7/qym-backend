@@ -17,7 +17,7 @@ class MachineController {
   static async getMachineById(req, res) {
     try {
       const { id } = req.params;
-      const machine = await MachineService.getMachineByUuid(id);
+      const machine = await MachineService.getMachineById(id);
       res.status(200).json(machine);
     } catch (error) {
       res.status(404).json({ error: error.message });

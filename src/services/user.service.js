@@ -1,6 +1,6 @@
 // src/services/user.service.js
 import db from '../models/index.js';
-const { User, WorkoutLog, Machine } = db;
+const { User, WorkoutLog, Machine, WorkoutSet } = db;
 
 class UserService {
   // Create a new user
@@ -16,22 +16,7 @@ class UserService {
   // Get a user by ID
   static async getUserById(id) {
     try {
-      const user = await User.findOne({
-        where: { id },
-        include: [
-          {
-            model: WorkoutLog,
-            as: 'workoutLogs',
-            include: [
-              {
-                model: Machine,
-                as: 'machine',
-              },
-            ],
-          },
-        ],
-      });
-
+      const user = await User.findByPk(id);
       if (!user) {
         throw new Error('User not found');
       }
@@ -79,33 +64,43 @@ class UserService {
   // Get all users
   static async getAllUsers() {
     try {
-      const users = await User.findAll({
-        include: [
-          {
-            model: WorkoutLog,
-            as: 'workoutLogs',
-            include: [
-              {
-                model: Machine,
-                as: 'machine',
-              },
-            ],
-          },
-        ],
-      });
+      const users = await User.findAll();
       return users;
     } catch (error) {
       throw new Error(`Error fetching users: ${error.message}`);
     }
   }
 
-  // Get a user's workout logs by user ID
-  static async getUserWorkoutLogs(id) {
+  /**
+   * Retrieves a user's workout logs along with the machine and workout sets for each log.
+   * @param {string} userId - The ID of the user.
+   * @returns {Promise<Array>} - A list of workout logs associated with the user.
+   */
+  static async getUserWorkoutLogs(userId) {
     try {
-      const user = await this.getUserById(id);
-      return user.workoutLogs;
+      // Find the user with their associated workout logs
+      const userWithLogs = await User.findOne({
+        where: { id: userId },
+        include: [
+          {
+            model: WorkoutLog,
+            as: 'workoutLogs',
+            include: [
+              { model: Machine, as: 'machine' },  // Include machine information
+              { model: WorkoutSet, as: 'workoutSets' },  // Include associated workout sets
+            ],
+          },
+        ],
+      });
+
+      if (!userWithLogs) {
+        throw new Error('User not found');
+      }
+
+      return userWithLogs.workoutLogs;
     } catch (error) {
-      throw new Error(`Error retrieving workout logs: ${error.message}`);
+      console.error('Error fetching user workout logs:', error);
+      throw error;
     }
   }
 }

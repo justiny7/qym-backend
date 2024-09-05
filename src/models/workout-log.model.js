@@ -8,30 +8,14 @@ export default (sequelize) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    timeOfTagOn: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
     timeOfTagOff: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
-    reps: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      validate: {
-        min: 0
-      }
-    },
-    sets: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      validate: {
-        min: 0
-      }
-    },
+    }
   }, {
     timestamps: true,
+    updatedAt: false,
+    createdAt: 'timeOfTagOn'
   });
 
   WorkoutLog.associate = function(models) {
@@ -45,6 +29,11 @@ export default (sequelize) => {
       foreignKey: 'userId',
       as: 'user',
       allowNull: false
+    });
+
+    WorkoutLog.hasMany(models.WorkoutSet, {
+      foreignKey: 'workoutLogId',
+      as: 'workoutSets',
     });
   };
 
