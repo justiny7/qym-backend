@@ -14,8 +14,8 @@ class WorkoutLogService {
 
     try {
       // Find the user and machine
-      const user = await User.findByPk(userId, { transaction });
-      const machine = await Machine.findByPk(machineId, { transaction });
+      const user = await User.findByPk(userId, { attributes: ['currentWorkoutLogId'], transaction });
+      const machine = await Machine.findByPk(machineId, { attributes: ['currentWorkoutLogId'], transaction });
       
       // Ensure both user and machine exist and are not tagged on
       if (!user || !machine) {
@@ -57,7 +57,6 @@ class WorkoutLogService {
       );
 
       await transaction.commit();
-      console.log('User tagged on:', workoutLog);
       return workoutLog;
     } catch (error) {
       await transaction.rollback();
@@ -77,12 +76,15 @@ class WorkoutLogService {
 
     try {
       // Find the user and machine
-      const user = await User.findByPk(userId, { transaction });
-      const machine = await Machine.findByPk(machineId, { transaction });
+      const user = await User.findByPk(userId, { attributes: ['currentWorkoutLogId'], transaction });
+      const machine = await Machine.findByPk(machineId, {
+        attributes: ['currentWorkoutLogId', 'maximumSessionDuration', 'lastTenSessions'],
+        transaction
+      });
 
       // Ensure both user and machine exist and have the same active workout log
       if (!user || !machine || user.currentWorkoutLogId !== machine.currentWorkoutLogId) {
-        throw new Error('No active workout log found for tagging off.');
+        throw new Error('Invalid user or machine for tagging off or current user and machine logs don\'t match.');
       }
 
       // Find the active workout log
@@ -120,7 +122,6 @@ class WorkoutLogService {
       );
 
       await transaction.commit();
-      console.log('User tagged off:', workoutLog);
       return workoutLog;
     } catch (error) {
       await transaction.rollback();
@@ -162,7 +163,6 @@ class WorkoutLogService {
       );
 
       await transaction.commit();
-
       return { workoutLog, workoutSets: newWorkoutSets };
     } catch (error) {
       await transaction.rollback();

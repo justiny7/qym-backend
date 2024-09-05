@@ -10,5 +10,7 @@ router.get('/machines', MachineController.getAllMachines);
 router.put('/machines/:id', MachineController.updateMachine);
 router.delete('/machines/:id', MachineController.deleteMachine);
 router.get('/machines/:id/workout-logs', MachineController.getMachineWorkoutLogs);
+router.get('/machines/:id/queue/poll', MachineController.poll);
+router.delete('/machines/:id/queue/dequeue', MachineController.dequeue);
 
 export default router;

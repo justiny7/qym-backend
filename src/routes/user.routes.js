@@ -10,5 +10,6 @@ router.get('/users', UserController.getAllUsers);
 router.put('/users/:id', UserController.updateUser);
 router.delete('/users/:id', UserController.deleteUser);
 router.get('/users/:id/workout-logs', UserController.getUserWorkoutLogs);
+router.post('/users/:id/queue/enqueue', UserController.enqueue);
 
 export default router;

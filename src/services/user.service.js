@@ -73,14 +73,14 @@ class UserService {
 
   /**
    * Retrieves a user's workout logs along with the machine and workout sets for each log.
-   * @param {string} userId - The ID of the user.
+   * @param {string} id - The ID of the user.
    * @returns {Promise<Array>} - A list of workout logs associated with the user.
    */
-  static async getUserWorkoutLogs(userId) {
+  static async getUserWorkoutLogs(id) {
     try {
       // Find the user with their associated workout logs
       const userWithLogs = await User.findOne({
-        where: { id: userId },
+        where: { id },
         include: [
           {
             model: WorkoutLog,

@@ -34,11 +34,15 @@ export default (sequelize) => {
       defaultValue: 'Good',
     },
     location: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      type: DataTypes.ARRAY(DataTypes.FLOAT),
+      defaultValue: [0, 0.0, 0.0], // [floor #, x, y]
     },
     manufacturerDetails: {
       type: DataTypes.JSONB,
+    },
+    currentWorkoutLogId: {
+      type: DataTypes.UUID,
+      allowNull: true,
     },
   }, {
     timestamps: true,  // Adds createdAt and updatedAt timestamps
@@ -50,9 +54,9 @@ export default (sequelize) => {
       as: 'workoutLogs'
     });
 
-    Machine.belongsTo(models.WorkoutLog, {
-      as: 'currentWorkoutLog',
-      foreignKey: 'currentWorkoutLogId',
+    Machine.hasMany(models.QueueItem, {
+      foreignKey: 'machineId',
+      as: 'queueItems'
     });
   };
 

@@ -36,6 +36,10 @@ export default (sequelize) => {
       type: DataTypes.ENUM('Active', 'Inactive', 'Banned'),
       defaultValue: 'Active',
     },
+    currentWorkoutLogId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
   }, {
     timestamps: true,  // Adds createdAt and updatedAt fields
   });
@@ -44,12 +48,12 @@ export default (sequelize) => {
   User.associate = function(models) {
     User.hasMany(models.WorkoutLog, {
       foreignKey: 'userId',
-      as: 'workoutLogs',  // Alias for the list of logs associated with this user
+      as: 'workoutLogs',
     });
 
-    User.belongsTo(models.WorkoutLog, {
-      as: 'currentWorkoutLog',
-      foreignKey: 'currentWorkoutLogId',
+    User.hasOne(models.QueueItem, {
+      foreignKey: 'userId',
+      as: 'queueItem',
     });
   };
 

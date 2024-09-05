@@ -1,5 +1,6 @@
 // src/controllers/machine.controller.js
 import MachineService from '../services/machine.service.js';
+import QueueItemService from '../services/queue-item.service.js';
 
 class MachineController {
   // Create a new machine
@@ -65,6 +66,41 @@ class MachineController {
       res.status(200).json(workoutLogs);
     } catch (error) {
       res.status(404).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Retrieves the first item in a machine's queue.
+   * @param {Object} req - The request object containing machineId.
+   * @param {Object} res - The response object.
+   */
+  static async poll(req, res) {
+    const { id } = req.params;
+
+    try {
+      const firstInQueue = await QueueItemService.poll(id);
+      if (!firstInQueue) {
+        return res.status(404).json({ message: 'Queue is empty' });
+      }
+      res.status(200).json(firstInQueue);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Removes the first item in a machine's queue (dequeue operation).
+   * @param {Object} req - The request object containing machineId.
+   * @param {Object} res - The response object.
+   */
+  static async dequeue(req, res) {
+    const { id } = req.params;
+
+    try {
+      await QueueItemService.dequeue(id);
+      res.status(200).json({ message: 'First item removed from queue' });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   }
 }

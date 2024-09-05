@@ -15,7 +15,15 @@ export default (sequelize) => {
   }, {
     timestamps: true,
     updatedAt: false,
-    createdAt: 'timeOfTagOn'
+    createdAt: 'timeOfTagOn',
+    indexes: [
+      {
+        fields: ['userId']
+      },
+      {
+        fields: ['machineId']
+      }
+    ],
   });
 
   WorkoutLog.associate = function(models) {
@@ -32,7 +40,6 @@ export default (sequelize) => {
     });
 
     WorkoutLog.hasMany(models.WorkoutSet, {
-      foreignKey: 'workoutLogId',
       as: 'workoutSets',
     });
   };

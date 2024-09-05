@@ -23,7 +23,12 @@ export default (sequelize) => {
       },
     },
   }, {
-    timestamps: false
+    timestamps: false,
+    indexes: [
+      {
+        fields: ['workoutLogId'],
+      },
+    ],
   });
 
   WorkoutSet.associate = function(models) {

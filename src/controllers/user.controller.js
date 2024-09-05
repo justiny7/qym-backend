@@ -1,5 +1,6 @@
 // src/controllers/user.controller.js
 import UserService from '../services/user.service.js';
+import QueueItemService from '../services/queue-item.service.js';
 
 class UserController {
   // Create a new user
@@ -65,6 +66,23 @@ class UserController {
       res.status(200).json(workoutLogs);
     } catch (error) {
       res.status(404).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Adds a user to a machine's queue (enqueue operation).
+   * @param {Object} req - The request object containing userId and machineId.
+   * @param {Object} res - The response object.
+   */
+  static async enqueue(req, res) {
+    const { id } = req.params;
+    const { machineId } = req.body;
+
+    try {
+      const queueItem = await QueueItemService.enqueue(id, machineId);
+      res.status(201).json(queueItem);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
   }
 }
