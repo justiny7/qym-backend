@@ -1,8 +1,8 @@
-// src/services/workout-log.service.js
+// src/services/utils.service.js
 import db from '../models/index.js';
-const { WorkoutLog, WorkoutSet, User, Machine, QueueItem } = db;
+const { WorkoutLog, WorkoutSet, QueueItem } = db;
 
-class WorkoutLogService {
+class UtilsService {
    /**
    * Updates a WorkoutLog and its associated WorkoutSets.
    * @param {string} workoutLogId - The ID of the WorkoutLog.
@@ -43,6 +43,33 @@ class WorkoutLogService {
       throw error;
     }
   }
+
+  /**
+   * Updates a QueueItem with timeReachedFront
+   * @param {string} queueItemId - The ID of the QueueItem.
+   * @returns {Promise<Object>} - The updated QueueItem.
+   */
+  static async updateAsFront(queueItemId) {
+    const transaction = await db.sequelize.transaction();
+
+    try {
+      // Find the queue item
+      const queueItem = await QueueItem.findByPk(queueItemId, { transaction });
+      if (!queueItem) {
+        throw new Error('QueueItem not found');
+      }
+
+      // Update the queue item with timeReachedFront
+      const updatedQueueItem = await queueItem.update({ timeReachedFront: new Date() }, { transaction });
+
+      await transaction.commit();
+      return updatedQueueItem;
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Error updating queue item:', error);
+      throw error;
+    }
+  }
 }
 
-export default WorkoutLogService;
+export default UtilsService;
