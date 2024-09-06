@@ -9,7 +9,10 @@ router.get('/users/:id', UserController.getUserById);
 router.get('/users', UserController.getAllUsers);
 router.put('/users/:id', UserController.updateUser);
 router.delete('/users/:id', UserController.deleteUser);
+
 router.get('/users/:id/workout-logs', UserController.getUserWorkoutLogs);
-router.post('/users/:id/queue/enqueue', UserController.enqueue);
+
+router.post('/users/:id/enqueue', UserController.enqueue);
+router.delete('/users/:id/dequeue', UserController.dequeue);
 
 export default router;

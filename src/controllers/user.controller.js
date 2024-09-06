@@ -1,6 +1,5 @@
 // src/controllers/user.controller.js
 import UserService from '../services/user.service.js';
-import QueueItemService from '../services/queue-item.service.js';
 
 class UserController {
   // Create a new user
@@ -79,8 +78,24 @@ class UserController {
     const { machineId } = req.body;
 
     try {
-      const queueItem = await QueueItemService.enqueue(id, machineId);
+      const queueItem = await UserService.enqueue(id, machineId);
       res.status(201).json(queueItem);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Removes a user from a machine's queue (dequeue operation).
+   * @param {Object} req - The request object containing userId and machineId.
+   * @param {Object} res - The response object.
+   */
+  static async dequeue(req, res) {
+    const { id } = req.params;
+
+    try {
+      const message = await UserService.dequeue(id);
+      res.status(200).json({ message });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

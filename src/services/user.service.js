@@ -1,6 +1,6 @@
 // src/services/user.service.js
 import db from '../models/index.js';
-const { User, WorkoutLog, Machine, WorkoutSet } = db;
+const { User, WorkoutLog, Machine, WorkoutSet, QueueItem } = db;
 
 class UserService {
   // Create a new user
@@ -100,6 +100,76 @@ class UserService {
       return userWithLogs.workoutLogs;
     } catch (error) {
       console.error('Error fetching user workout logs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Adds a user to a machine's queue. Ensures a user can only be in one queue.
+   * @param {string} userId - The ID of the user.
+   * @param {string} machineId - The ID of the machine.
+   * @returns {Promise<Object>} - The newly created QueueItem.
+   */
+  static async enqueue(userId, machineId) {
+    const transaction = await db.sequelize.transaction();
+
+    try {
+      // Check if the user already has a queueItem without loading other user attributes
+      const userWithQueueItem = await User.findOne({
+        where: { id: userId },
+        include: [{
+          model: QueueItem,
+          as: 'queueItem',
+        }],
+        attributes: []  // Don't load any user attributes
+      });
+
+      // Check if the user has an associated queueItem
+      if (userWithQueueItem.queueItem) {
+        throw new Error('User is already in a queue.');
+      }
+
+      // Create a new QueueItem for the machine
+      const newQueueItem = await QueueItem.create({ userId, machineId }, { transaction });
+
+      await transaction.commit();
+      return newQueueItem;
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  /**
+   * Removes a user from a machine's queue (dequeue operation).
+   * @param {string} userId - The ID of the user.
+   */
+  static async dequeue(userId) {
+    const transaction = await db.sequelize.transaction();
+
+    try {
+      // Find the user with their associated queueItem
+      const userWithQueueItem = await User.findOne({
+        where: { id: userId },
+        include: [{
+          model: QueueItem,
+          as: 'queueItem',
+        }],
+        attributes: []  // Don't load any user attributes
+      });
+
+      // Check if the user has an associated queueItem
+      if (!userWithQueueItem.queueItem) {
+        throw new Error('User is not in a queue.');
+      }
+
+      // Remove the queueItem
+      await userWithQueueItem.queueItem.destroy({ transaction });
+
+      await transaction.commit();
+      return `User with ID ${userId} has been dequeued`;
+    } catch (error) {
+      await transaction.rollback();
       throw error;
     }
   }

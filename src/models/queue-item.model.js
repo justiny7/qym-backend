@@ -7,14 +7,18 @@ export default (sequelize) => {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
-    }
+    },
+    timeReachedFront: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   }, {
     timestamps: true,
     updatedAt: false,
-    createdAt: 'enqueueTime',
+    createdAt: 'timeEnqueued',
     indexes: [
       {
-        fields: ['machineId', 'enqueueTime']
+        fields: ['machineId', 'timeEnqueued']
       }
     ]
   });
