@@ -1,12 +1,12 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check, sleep, group } from 'k6';
 
 // Configuration for load testing
 export let options = {
   stages: [
     { duration: '30s', target: 20 }, // Ramp-up to 20 users over 30 seconds
     { duration: '1m', target: 20 },  // Stay at 20 users for 1 minute
-    { duration: '30s', target: 0 },  // Ramp-down to 0 users
+    { duration: '45s', target: 0 },  // Ramp-down to 0 users
   ],
 };
 
@@ -26,8 +26,8 @@ function randomString(length) {
 function createUser() {
   const url = `${API_URL}/users`;
   const payload = JSON.stringify({
-    name: `User-${randomString(5)}`,
-    email: `${randomString(5)}@example.com`,
+    name: `User-${randomString(10)}`,
+    email: `${randomString(10)}@example.com`,
   });
   const params = { headers: { 'Content-Type': 'application/json' } };
   const res = http.post(url, payload, params);
@@ -43,8 +43,8 @@ function createUser() {
 function createMachine() {
   const url = `${API_URL}/machines`;
   const payload = JSON.stringify({
-    name: `Machine-${randomString(5)}`,
-    type: `Type-${randomString(5)}`,
+    name: `Machine-${randomString(10)}`,
+    type: `Type-${randomString(10)}`,
   });
   const params = { headers: { 'Content-Type': 'application/json' } };
   const res = http.post(url, payload, params);
@@ -112,35 +112,42 @@ export default function () {
   let userMachine = [];
   let machines = [];
   let machineQueue = [];
-  for (let i = 0; i < numUsers; i++) {
-    users.push(createUser());
-    userMachine.push(Math.floor(Math.random() * numMachines));
-  }
-  for (let i = 0; i < numMachines; i++) {
-    machines.push(createMachine());
-    machineQueue.push(0);
-  }
+
+  group('Create Users and Machines', () => {
+    for (let i = 0; i < numUsers; i++) {
+      users.push(createUser());
+      userMachine.push(Math.floor(Math.random() * numMachines));
+    }
+    for (let i = 0; i < numMachines; i++) {
+      machines.push(createMachine());
+      machineQueue.push(0);
+    }
+  });
 
   for (let i = 0; i < numUsers; i++) {
-    for (let j = i - 1; j >= 0; j--) {
-      if (userMachine[i] === userMachine[j]) {
-        tagOff(users[j], machines[userMachine[j]]);
-        break;
+    group('Tag on/off + enqueue', () => {
+      for (let j = i - 1; j >= 0; j--) {
+        if (userMachine[i] === userMachine[j]) {
+          tagOff(users[j], machines[userMachine[j]]);
+          break;
+        }
+      }
+      tagOn(users[i], machines[userMachine[i]]);
+      
+      let machineId = Math.floor(Math.random() * numMachines);
+      enqueueUser(users[i], machines[machineId]);
+      machineQueue[machineId] += 1;
+    });
+  }
+
+  group('Dequeue', () => {
+    for (let i = 0; i < numMachines; i++) {
+      while (machineQueue[i] > 0) {
+        dequeueUser(machines[i]);
+        machineQueue[i] -= 1;
       }
     }
-    tagOn(users[i], machines[userMachine[i]]);
-
-    let machineId = Math.floor(Math.random() * numMachines);
-    enqueueUser(users[i], machines[machineId]);
-    machineQueue[machineId] += 1;
-  }
-
-  for (let i = 0; i < numMachines; i++) {
-    while (machineQueue[i] > 0) {
-      dequeueUser(machines[i]);
-      machineQueue[i] -= 1;
-    }
-  }
+  });
 
   sleep(1);  // Simulate a short wait between iterations
 }
