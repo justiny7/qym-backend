@@ -112,7 +112,9 @@ class MachineService {
    * @returns {Promise<Object>} - The created WorkoutLog object.
    */
   static async tagOn(userId, machineId) {
-    const transaction = await db.sequelize.transaction();
+    const transaction = await db.sequelize.transaction({
+      isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
+    });
 
     try {
       // Find the user and machine
@@ -177,7 +179,9 @@ class MachineService {
    * @returns {Promise<Object>} - The updated WorkoutLog object.
    */
   static async tagOff(userId, machineId) {
-    const transaction = await db.sequelize.transaction();
+    const transaction = await db.sequelize.transaction({
+      isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
+    });
 
     try {
       // Find the user and machine
@@ -261,14 +265,11 @@ class MachineService {
    * @returns {Promise<void>} - Resolves when the first queue item is removed.
    */
   static async dequeue(machineId) {
-    const transaction = await db.sequelize.transaction();
-
     try {
       // Find the first item in the queue
       const firstInQueue = await QueueItem.findOne({
         where: { machineId },
         order: [['timeEnqueued', 'ASC']],
-        transaction
       });
 
       if (!firstInQueue) {
@@ -276,11 +277,8 @@ class MachineService {
       }
 
       // Remove the first queue item
-      await firstInQueue.destroy({ transaction });
-
-      await transaction.commit();
+      await firstInQueue.destroy();
     } catch (error) {
-      await transaction.rollback();
       throw error;
     }
   }

@@ -10,7 +10,9 @@ class UtilsService {
    * @returns {Promise<Object>} - The updated WorkoutLog and associated WorkoutSets.
    */
   static async updateWorkoutLogWithSets(workoutLogId, workoutSets) {
-    const transaction = await db.sequelize.transaction();
+    const transaction = await db.sequelize.transaction({
+      isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
+    });
 
     try {
       // Find the workout log
@@ -50,22 +52,17 @@ class UtilsService {
    * @returns {Promise<Object>} - The updated QueueItem.
    */
   static async updateAsFront(queueItemId) {
-    const transaction = await db.sequelize.transaction();
-
     try {
       // Find the queue item
-      const queueItem = await QueueItem.findByPk(queueItemId, { transaction });
+      const queueItem = await QueueItem.findByPk(queueItemId);
       if (!queueItem) {
         throw new Error('QueueItem not found');
       }
 
       // Update the queue item with timeReachedFront
-      const updatedQueueItem = await queueItem.update({ timeReachedFront: new Date() }, { transaction });
-
-      await transaction.commit();
+      const updatedQueueItem = await queueItem.update({ timeReachedFront: new Date() });
       return updatedQueueItem;
     } catch (error) {
-      await transaction.rollback();
       console.error('Error updating queue item:', error);
       throw error;
     }

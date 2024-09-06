@@ -33,7 +33,7 @@ fs.readdirSync(routesPath).forEach((file) => {
 });
 
 // Sync PostgreSQL tables
-db.sequelize.sync({ force: false }) // Use force: true to drop and recreate tables each time (ONLY IN DEV)
+db.sequelize.sync({ force: true }) // Use force: true to drop and recreate tables each time (ONLY IN DEV)
   .then(() => {
     console.log('Database & tables created!');
   })

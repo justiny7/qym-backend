@@ -19,6 +19,9 @@ export default (sequelize) => {
     indexes: [
       {
         fields: ['machineId', 'timeEnqueued']
+      },
+      {
+        fields: ['userId']
       }
     ]
   });
