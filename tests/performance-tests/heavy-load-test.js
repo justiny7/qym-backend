@@ -10,7 +10,7 @@ export let options = {
   ],
 };
 
-const API_URL = 'http://localhost:3000/api'; // Update this with your API URL
+const API_URL = 'http://localhost:3000/api';
 
 // Random data generator
 function randomString(length) {
@@ -103,8 +103,7 @@ function dequeueUser(machineId) {
 }
 
 // Main function for running load tests
-export default function () {
-
+export default function() {
   const numMachines = 100;
   const numUsers = 1000;
 
