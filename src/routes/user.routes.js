@@ -12,7 +12,6 @@ router.delete('/users/:id', UserController.deleteUser);
 
 router.get('/users/:id/workout-logs', UserController.getUserWorkoutLogs);
 
-router.post('/users/:id/enqueue', UserController.enqueue);
-router.delete('/users/:id/dequeue', UserController.dequeue);
+router.delete('/users/:id/queue', UserController.dequeue);
 
 export default router;

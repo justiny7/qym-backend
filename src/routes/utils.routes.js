@@ -4,8 +4,8 @@ import UtilsController from '../controllers/utils.controller.js';
 
 const router = express.Router();
 
-router.put('/workout-log/:id/', UtilsController.updateWorkoutLogWithSets);
+router.put('/workout-logs/:id/', UtilsController.updateWorkoutLogWithSets);
 
-router.put('/queue-item/:id', UtilsController.updateAsFront);
+router.put('/queue-items/:id', UtilsController.updateAsFront);
 
 export default router;

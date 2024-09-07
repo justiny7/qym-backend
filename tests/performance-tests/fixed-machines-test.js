@@ -15,7 +15,7 @@ export let options = {
   ],
 };
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://localhost:3000';
 
 // Random data generator
 function randomString(length) {
@@ -92,7 +92,7 @@ function getMachineById(machineId) {
 
 // Tag On API Test
 function tagOn(userId, machineId) {
-  const url = `${API_URL}/machines/${machineId}/tag-on`;
+  const url = `${API_URL}/machines/${machineId}/workout-logs`;
   const payload = JSON.stringify({ userId });
   const params = { headers: { 'Content-Type': 'application/json' } };
   const res = http.post(url, payload, params);
@@ -104,10 +104,9 @@ function tagOn(userId, machineId) {
 
 // Tag Off API Test
 function tagOff(userId, machineId) {
-  const url = `${API_URL}/machines/${machineId}/tag-off`;
-  const payload = JSON.stringify({ userId });
+  const url = `${API_URL}/machines/${machineId}/workout-logs/${userId}`;
   const params = { headers: { 'Content-Type': 'application/json' } };
-  const res = http.post(url, payload, params);
+  const res = http.put(url, null, params);
 
   check(res, {
     'Tag off successful': (r) => (r.status === 200 || r.status === 500), // Tag off can fail if machine is already tagged off
@@ -116,8 +115,8 @@ function tagOff(userId, machineId) {
 
 // Enqueue User API Test
 function enqueueUser(userId, machineId) {
-  const url = `${API_URL}/users/${userId}/enqueue`;
-  const payload = JSON.stringify({ machineId });
+  const url = `${API_URL}/machines/${machineId}/queue`;
+  const payload = JSON.stringify({ userId });
   const params = { headers: { 'Content-Type': 'application/json' } };
   const res = http.post(url, payload, params);
 
@@ -128,7 +127,7 @@ function enqueueUser(userId, machineId) {
 
 // Dequeue User API Test
 function dequeueUser(userId) {
-  const url = `${API_URL}/users/${userId}/dequeue`;
+  const url = `${API_URL}/users/${userId}/queue`;
   const res = http.del(url);
 
   check(res, {

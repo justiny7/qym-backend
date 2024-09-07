@@ -69,23 +69,6 @@ class UserController {
   }
 
   /**
-   * Adds a user to a machine's queue (enqueue operation).
-   * @param {Object} req - The request object containing userId and machineId.
-   * @param {Object} res - The response object.
-   */
-  static async enqueue(req, res) {
-    const { id } = req.params;
-    const { machineId } = req.body;
-
-    try {
-      const queueItem = await UserService.enqueue(id, machineId);
-      res.status(201).json(queueItem);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  /**
    * Removes a user from a machine's queue (dequeue operation).
    * @param {Object} req - The request object containing userId and machineId.
    * @param {Object} res - The response object.

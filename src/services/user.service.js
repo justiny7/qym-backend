@@ -105,31 +105,6 @@ class UserService {
   }
 
   /**
-   * Adds a user to a machine's queue. Ensures a user can only be in one queue.
-   * @param {string} userId - The ID of the user.
-   * @param {string} machineId - The ID of the machine.
-   * @returns {Promise<Object>} - The newly created QueueItem.
-   */
-  static async enqueue(userId, machineId) {
-    try {
-      // Check if the user already has a queueItem
-      const queueItem = await QueueItem.findOne({
-        where: { userId },
-      });
-
-      if (queueItem) {
-        throw new Error('User is already in a queue.');
-      }
-
-      // Create a new QueueItem for the machine
-      const newQueueItem = await QueueItem.create({ userId, machineId });
-      return newQueueItem;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
    * Removes a user from a machine's queue (dequeue operation).
    * @param {string} userId - The ID of the user.
    */

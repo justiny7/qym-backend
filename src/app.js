@@ -27,7 +27,7 @@ fs.readdirSync(routesPath).forEach((file) => {
     const routePath = path.join(routesPath, file);
     import(routePath).then((module) => {
       const route = module.default; // Assuming each route file exports a default router object
-      app.use('/api', route); // You can change the base path as needed
+      app.use('/', route); // You can change the base path as needed
     }).catch(err => console.error(`Failed to load route ${file}:`, err));
   }
 });

@@ -87,12 +87,11 @@ class MachineController {
 
   /**
    * Handles the HTTP request for tagging off from a machine.
-   * @param {Object} req - The request object, containing userId in the body.
+   * @param {Object} req - The request object, containing machineId and userId in the URI.
    * @param {Object} res - The response object.
    */
   static async tagOff(req, res) {
-    const { id } = req.params;
-    const { userId } = req.body;
+    const { id, userId } = req.params;
     try {
       const workoutLog = await MachineService.tagOff(userId, id);
       res.status(200).json(workoutLog);
@@ -116,6 +115,23 @@ class MachineController {
         return res.status(404).json({ message: 'Queue is empty' });
       }
       res.status(200).json(firstInQueue);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Adds a user to a machine's queue (enqueue operation).
+   * @param {Object} req - The request object containing userId and machineId.
+   * @param {Object} res - The response object.
+   */
+  static async enqueue(req, res) {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    try {
+      const queueItem = await MachineService.enqueue(userId, id);
+      res.status(201).json(queueItem);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
