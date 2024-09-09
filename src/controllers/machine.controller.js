@@ -76,9 +76,8 @@ class MachineController {
    */
   static async tagOn(req, res) {
     const { id } = req.params;
-    const { userId } = req.body;
     try {
-      const workoutLog = await MachineService.tagOn(userId, id);
+      const workoutLog = await MachineService.tagOn(req.user.id, id);
       res.status(201).json(workoutLog);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -91,9 +90,9 @@ class MachineController {
    * @param {Object} res - The response object.
    */
   static async tagOff(req, res) {
-    const { id, userId } = req.params;
+    const { id } = req.params;
     try {
-      const workoutLog = await MachineService.tagOff(userId, id);
+      const workoutLog = await MachineService.tagOff(req.user.id, id);
       res.status(200).json(workoutLog);
     } catch (error) {
       res.status(500).json({ error: error.message });

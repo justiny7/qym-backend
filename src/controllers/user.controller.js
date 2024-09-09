@@ -60,8 +60,7 @@ class UserController {
   // Get a user's workout logs by user ID
   static async getUserWorkoutLogs(req, res) {
     try {
-      const { id } = req.params;
-      const workoutLogs = await UserService.getUserWorkoutLogs(id);
+      const workoutLogs = await UserService.getUserWorkoutLogs(req.user.id);
       res.status(200).json(workoutLogs);
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -74,10 +73,8 @@ class UserController {
    * @param {Object} res - The response object.
    */
   static async dequeue(req, res) {
-    const { id } = req.params;
-
     try {
-      const message = await UserService.dequeue(id);
+      const message = await UserService.dequeue(req.user.id);
       res.status(200).json({ message });
     } catch (error) {
       res.status(400).json({ error: error.message });

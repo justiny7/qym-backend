@@ -1,4 +1,6 @@
 import express from 'express';
+import session from 'express-session';
+import passport from 'passport';
 import bodyParser from 'body-parser';
 import fs from 'fs';
 import path from 'path';
@@ -16,6 +18,15 @@ app.use(morgan('dev')); // Logging
 app.use(cors()); // Enable CORS
 app.use(bodyParser.json()); // Parse JSON bodies
 app.use(bodyParser.urlencoded({ extended: true })); // Parse URL-encoded bodies
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: 'auto' },
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Dynamically load all route files in the 'routes' directory
 const __filename = fileURLToPath(import.meta.url);

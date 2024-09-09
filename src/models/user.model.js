@@ -28,9 +28,16 @@ export default (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    affiliatedAdmin: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,  // Indicates whether the user has admin rights
+    password: {
+      type: DataTypes.STRING,
+    },
+    googleId: {
+      type: DataTypes.STRING,
+      unique: true,
+    },
+    role: {
+      type: DataTypes.ENUM('admin', 'user'),
+      defaultValue: 'user'
     },
     membershipStatus: {
       type: DataTypes.ENUM('Active', 'Inactive', 'Banned'),
