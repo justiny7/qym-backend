@@ -101,15 +101,15 @@ class MachineController {
 
 
   /**
-   * Retrieves the first item in a machine's queue.
+   * Retrieves the first item in a machine's queue. Updates the item's timeReachedFront.
    * @param {Object} req - The request object containing machineId.
    * @param {Object} res - The response object.
    */
-  static async poll(req, res) {
+  static async getAndMarkFirst(req, res) {
     const { id } = req.params;
 
     try {
-      const firstInQueue = await MachineService.poll(id);
+      const firstInQueue = await MachineService.getAndMarkFirst(id);
       if (!firstInQueue) {
         return res.status(404).json({ message: 'Queue is empty' });
       }

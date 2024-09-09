@@ -45,22 +45,19 @@ passport.use(new GoogleStrategy({
   callbackURL: '/auth/google/callback',
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    console.log(profile.displayName);
-    let user = await User.findOne({ where: { email: profile.emails[0].value } });
+    const userEmail = profile.emails[0].value;
+    let user = await User.findOne({ where: { email: userEmail } });
     if (!user) {
       user = await User.create({
         name: profile.displayName,
         googleId: profile.id,
-        email: profile.emails[0].value
+        email: userEmail
       });
     } else {
-      await User.update({
-        googleId: profile.id
-      }, {
-        where: { email: profile.emails[0].value }
-      });
-      
-      user = await User.findOne({ where: { email: profile.emails[0].value } });
+      if (!user.googleId) {
+        user.googleId = profile.id;
+      }
+      await user.save();
     }
     return done(null, user);
   } catch (err) {

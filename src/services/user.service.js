@@ -9,7 +9,7 @@ class UserService {
       const newUser = await User.create(userData);
       return newUser;
     } catch (error) {
-      throw new Error(`Error creating user: ${error.message}`);
+      throw error;
     }
   }
 
@@ -23,7 +23,7 @@ class UserService {
 
       return user;
     } catch (error) {
-      throw new Error(`Error retrieving user: ${error.message}`);
+      throw error;
     }
   }
 
@@ -40,7 +40,7 @@ class UserService {
 
       return await this.getUserById(id);
     } catch (error) {
-      throw new Error(`Error updating user: ${error.message}`);
+      throw error;
     }
   }
 
@@ -57,7 +57,7 @@ class UserService {
 
       return `User with ID ${id} has been deleted`;
     } catch (error) {
-      throw new Error(`Error deleting user: ${error.message}`);
+      throw error;
     }
   }
 
@@ -67,7 +67,7 @@ class UserService {
       const users = await User.findAll();
       return users;
     } catch (error) {
-      throw new Error(`Error fetching users: ${error.message}`);
+      throw error;
     }
   }
 
@@ -99,7 +99,6 @@ class UserService {
 
       return userWithLogs.workoutLogs;
     } catch (error) {
-      console.error('Error fetching user workout logs:', error);
       throw error;
     }
   }
@@ -149,6 +148,55 @@ class UserService {
       throw error;
     }
   }
+
+     /**
+   * Updates a WorkoutLog and its associated WorkoutSets.
+   * @param {string} userId - The ID of the user.
+   * @param {string} workoutLogId - The ID of the WorkoutLog.
+   * @param {Array} workoutSets - The list of WorkoutSets to associate with the WorkoutLog.
+   * @returns {Promise<Object>} - The updated WorkoutLog and associated WorkoutSets.
+   */
+     static async updateWorkoutLogWithSets(userId, workoutLogId, workoutSets) {
+      const transaction = await db.sequelize.transaction({
+        isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
+      });
+  
+      try {
+        // Find the workout log
+        const workoutLog = await WorkoutLog.findByPk(workoutLogId, { transaction });
+        if (!workoutLog) {
+          throw new Error('WorkoutLog not found');
+        }
+        if (!workoutLog.userId) {
+          throw new Error('WorkoutLog is not associated with a user');
+        }
+        if (workoutLog.userId !== userId) {
+          throw new Error('User is not associated with this workout log');
+        }
+  
+        // Remove old workout sets associated with this workout log
+        await WorkoutSet.destroy({
+          where: { workoutLogId },
+          transaction,
+        });
+  
+        // Create new workout sets
+        const newWorkoutSets = await WorkoutSet.bulkCreate(
+          workoutSets.map((set) => ({
+            workoutLogId,
+            reps: set.reps,
+            weight: set.weight,
+          })),
+          { transaction }
+        );
+  
+        await transaction.commit();
+        return { workoutLog, workoutSets: newWorkoutSets };
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      }
+    }
 }
 
 export default UserService;

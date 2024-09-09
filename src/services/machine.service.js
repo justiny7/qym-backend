@@ -118,9 +118,9 @@ class MachineService {
 
     try {
       // Find the user and machine
-      const user = await User.findByPk(userId, { attributes: ['currentWorkoutLogId'], transaction });
+      const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
       const machine = await Machine.findByPk(machineId, {
-        attributes: ['currentWorkoutLogId' , 'maximumSessionDuration'],
+        attributes: ['id', 'currentWorkoutLogId' , 'maximumSessionDuration'],
         transaction
       });
       
@@ -153,22 +153,16 @@ class MachineService {
         timeOfTagOn: new Date(),
       }, { transaction });
 
+      
       // Update the user and machine with the current workout log ID
-      await User.update(
-        { currentWorkoutLogId: workoutLog.id },
-        { where: { id: userId }, transaction }
-      );
-      await Machine.update(
-        { currentWorkoutLogId: workoutLog.id },
-        { where: { id: machineId }, transaction }
-      );
+      await user.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
+      await machine.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
 
       await transaction.commit();
       return workoutLog;
     } catch (error) {
       await transaction.rollback();
-      console.error('Error during tag on:', error);
-      throw new Error('Could not tag on to the machine.');
+      throw error;
     }
   }
 
@@ -185,9 +179,9 @@ class MachineService {
 
     try {
       // Find the user and machine
-      const user = await User.findByPk(userId, { attributes: ['currentWorkoutLogId'], transaction });
+      const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
       const machine = await Machine.findByPk(machineId, {
-        attributes: ['currentWorkoutLogId', 'maximumSessionDuration', 'lastTenSessions'],
+        attributes: ['id', 'currentWorkoutLogId', 'maximumSessionDuration', 'lastTenSessions'],
         transaction
       });
 
@@ -203,8 +197,7 @@ class MachineService {
       }
 
       // Update the log with the tag off time
-      workoutLog.timeOfTagOff = new Date();
-      await workoutLog.save({ transaction });
+      await workoutLog.update({ timeOfTagOff: new Date() }, { transaction });
 
       // Calculate the duration of workout and update machine's last ten sessions
       const workoutDuration = (workoutLog.timeOfTagOff - workoutLog.timeOfTagOn) / 1000;
@@ -214,44 +207,41 @@ class MachineService {
         lastTenSessions.push(workoutDuration);
         const averageUsageTime = lastTenSessions.reduce((acc, duration) => acc + duration, 0) / 10;
 
-        await Machine.update(
-          { lastTenSessions, averageUsageTime },
-          { where: { id: machineId }, transaction }
-        );
+        await machine.update({
+          lastTenSessions,
+          averageUsageTime,
+        }, { transaction });
       }
  
       // Clear the current workout log ID on the user and machine
-      await User.update(
-        { currentWorkoutLogId: null },
-        { where: { id: userId }, transaction }
-      );
-      await Machine.update(
-        { currentWorkoutLogId: null },
-        { where: { id: machineId }, transaction }
-      );
+      await user.update({ currentWorkoutLogId: null }, { transaction });
+      await machine.update({ currentWorkoutLogId: null }, { transaction });
 
       await transaction.commit();
       return workoutLog;
     } catch (error) {
       await transaction.rollback();
-      console.error('Error during tag off:', error);
-      throw new Error('Could not tag off from the machine.');
+      throw error;
     }
   }
 
 
   /**
-   * Retrieves the first item in a machine's queue based on creation time.
+   * Retrieves the first item in a machine's queue based on creation time. Updates timeReachedFront attribute.
    * @param {string} machineId - The ID of the machine.
    * @returns {Promise<Object|null>} - The first queue item, or null if no item exists.
    */
-  static async poll(machineId) {
+  static async getAndMarkFirst(machineId) {
     try {
       const firstInQueue = await QueueItem.findOne({
         where: { machineId },
         order: [['timeEnqueued', 'ASC']],  // Order by creation time
         include: [{ model: User, as: 'user' }]  // Include user details
       });
+
+      if (firstInQueue && firstInQueue.timeReachedFront === null) {
+        await firstInQueue.update({ timeReachedFront: new Date() });
+      }
 
       return firstInQueue || null;
     } catch (error) {

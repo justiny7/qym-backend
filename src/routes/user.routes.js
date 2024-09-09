@@ -1,25 +1,28 @@
 // src/routes/user.routes.js
 import { Router } from 'express'
 import UserController from '../controllers/user.controller.js';
-import { roleAuthenticate } from '../middleware/auth.middleware.js';
+import { authUser } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
 // Admin routes (TODO: change to limit view access)
-router.get('/users', roleAuthenticate(['admin']), UserController.getAllUsers);
-router.post('/users', roleAuthenticate(['admin']), UserController.createUser);
-router.get('/users/:id', roleAuthenticate(['admin']), UserController.getUserById);
-router.put('/users/:id', roleAuthenticate(['admin']), UserController.updateUser);
-router.delete('/users/:id', roleAuthenticate(['admin']), UserController.deleteUser);
+router.get('/users', authUser(['admin']), UserController.getAllUsers);
+router.post('/users', authUser(['admin']), UserController.createUser);
+router.get('/users/:id', authUser(['admin']), UserController.getUserById);
+router.put('/users/:id', authUser(['admin']), UserController.updateUser);
+router.delete('/users/:id', authUser(['admin']), UserController.deleteUser);
 
 // Shared routes
-router.get('/profile', roleAuthenticate(['admin', 'user']), UserController.getUserById);
-router.post('/profile', roleAuthenticate(['admin', 'user']), UserController.updateUser);
-router.delete('/profile', roleAuthenticate(['admin', 'user']), UserController.deleteUser);
-// router.get('/dashboard', roleAuthenticate(['admin', 'user']), UserController.getDashboard);
-router.get('/workout-logs', roleAuthenticate(['admin', 'user']), UserController.getUserWorkoutLogs);
-router.patch('/workout-logs/:id', roleAuthenticate(['admin', 'user']), UserController.disassociateWorkoutLog);
-router.delete('/queue', roleAuthenticate(['admin', 'user']), UserController.dequeue);
+router.get('/profile', authUser(['admin', 'user']), UserController.getUserById);
+router.post('/profile', authUser(['admin', 'user']), UserController.updateUser);
+router.delete('/profile', authUser(['admin', 'user']), UserController.deleteUser);
+// router.get('/dashboard', authUser(['admin', 'user']), UserController.getDashboard);
+
+router.get('/workout-logs', authUser(['admin', 'user']), UserController.getUserWorkoutLogs);
+router.put('/workout-logs/:id/', authUser(['admin', 'user']), UserController.updateWorkoutLogWithSets);
+router.patch('/workout-logs/:id', authUser(['admin', 'user']), UserController.disassociateWorkoutLog);
+
+router.delete('/queue', authUser(['admin', 'user']), UserController.dequeue);
 
 
 export default router;

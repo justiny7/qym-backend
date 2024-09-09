@@ -39,6 +39,7 @@ export default (sequelize) => {
     });
 
     WorkoutLog.hasMany(models.WorkoutSet, {
+      foreignKey: 'workoutLogId',
       as: 'workoutSets',
     });
   };
