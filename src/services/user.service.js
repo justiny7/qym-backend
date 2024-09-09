@@ -111,17 +111,40 @@ class UserService {
   static async dequeue(userId) {
     try {
       // Check if the user already has a queueItem
-      const queueItem = await QueueItem.findOne({
-        where: { userId },
-      });
-
+      const queueItem = await QueueItem.findOne({ where: { userId } });
       if (!queueItem) {
         throw new Error('User is not in a queue.');
       }
 
       // Remove the queueItem
       await queueItem.destroy();
-      return `User with ID ${userId} has been dequeued`;
+      return `User has been dequeued`;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Disassociates a workout log from a user.
+   * @param {string} userId - The ID of the user.
+   * @param {string} workoutLogId - The ID of the log.
+   */
+  static async disassociateWorkoutLog(userId, workoutLogId) {
+    try {
+      const workoutLog = await WorkoutLog.findByPk(workoutLogId);
+      if (!workoutLog) {
+        throw new Error('Workout log not found');
+      }
+      if (!workoutLog.userId) {
+        throw new Error('Workout log is not associated with a user');
+      }
+      if (workoutLog.userId !== userId) {
+        throw new Error('User is not associated with this workout log');
+      }
+
+      workoutLog.userId = null;
+      await workoutLog.save();
+      return 'Workout log has been disassociated from user';
     } catch (error) {
       throw error;
     }

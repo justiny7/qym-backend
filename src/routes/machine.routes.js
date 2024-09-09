@@ -6,9 +6,9 @@ import { roleAuthenticate } from '../middleware/auth.middleware.js';
 const router = Router();
 
 // Admin routes
+router.get('/machines', roleAuthenticate(['admin']), MachineController.getAllMachines);
 router.post('/machines', roleAuthenticate(['admin']), MachineController.createMachine);
 router.get('/machines/:id', roleAuthenticate(['admin']), MachineController.getMachineById);
-router.get('/machines', roleAuthenticate(['admin']), MachineController.getAllMachines);
 router.put('/machines/:id', roleAuthenticate(['admin']), MachineController.updateMachine);
 router.delete('/machines/:id', roleAuthenticate(['admin']), MachineController.deleteMachine);
 
@@ -16,7 +16,7 @@ router.get('/machines/:id/workout-logs', roleAuthenticate(['admin']), MachineCon
 
 // Shared routes
 router.post('/machines/:id/workout-logs', roleAuthenticate(['admin', 'user']), MachineController.tagOn);
-router.put('/machines/:id/workout-logs', roleAuthenticate(['admin', 'user']), MachineController.tagOff);
+router.patch('/machines/:id/workout-logs/current', roleAuthenticate(['admin', 'user']), MachineController.tagOff);
 
 router.get('/machines/:id/queue', MachineController.poll);
 router.post('/machines/:id/queue', MachineController.enqueue);

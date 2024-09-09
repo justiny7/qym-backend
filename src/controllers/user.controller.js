@@ -16,7 +16,7 @@ class UserController {
   // Get a user by ID
   static async getUserById(req, res) {
     try {
-      const { id } = req.params;
+      const id = req.user.id || req.params.id;
       const user = await UserService.getUserById(id);
       res.status(200).json(user);
     } catch (error) {
@@ -27,7 +27,7 @@ class UserController {
   // Update a user by ID
   static async updateUser(req, res) {
     try {
-      const { id } = req.params;
+      const id = req.user.id || req.params.id;
       const updateData = req.body;
       const updatedUser = await UserService.updateUser(id, updateData);
       res.status(200).json(updatedUser);
@@ -39,7 +39,7 @@ class UserController {
   // Delete a user by ID
   static async deleteUser(req, res) {
     try {
-      const { id } = req.params;
+      const id = req.user.id || req.params.id;
       const message = await UserService.deleteUser(id);
       res.status(200).json({ message });
     } catch (error) {
@@ -76,6 +76,21 @@ class UserController {
     try {
       const message = await UserService.dequeue(req.user.id);
       res.status(200).json({ message });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Disassociates a workout log from a user
+   * @param {Object} req - The request object containing the workout log ID.
+   * @param {Object} res - The response object.
+   */
+  static async disassociateWorkoutLog(req, res) {
+    try {
+      const { id } = req.params;
+      const workoutLog = await UserService.disassociateWorkoutLog(req.user.id, id);
+      res.status(200).json(workoutLog);
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

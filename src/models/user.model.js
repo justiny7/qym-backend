@@ -49,6 +49,9 @@ export default (sequelize) => {
     },
   }, {
     timestamps: true,  // Adds createdAt and updatedAt fields
+    defaultScope: {
+      attributes: { exclude: ['password'] },
+    }
   });
 
   // Associations

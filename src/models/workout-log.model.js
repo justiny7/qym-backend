@@ -36,7 +36,6 @@ export default (sequelize) => {
     WorkoutLog.belongsTo(models.User, {
       foreignKey: 'userId',
       as: 'user',
-      allowNull: false
     });
 
     WorkoutLog.hasMany(models.WorkoutSet, {
