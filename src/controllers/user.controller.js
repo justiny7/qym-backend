@@ -107,7 +107,7 @@ class UserController {
 
     try {
       const result = await UserService.updateWorkoutLogWithSets(req.user.id, id, workoutSets);
-      res.status(200).json({ message: 'WorkoutLog and WorkoutSets updated', ...result });
+      res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
