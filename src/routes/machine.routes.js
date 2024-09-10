@@ -18,8 +18,8 @@ router.get('/machines/:id/workout-logs', authUser(['admin']), MachineController.
 router.post('/machines/:id/workout-logs', authUser(['admin', 'user']), MachineController.tagOn);
 router.patch('/machines/:id/workout-logs/current', authUser(['admin', 'user']), MachineController.tagOff);
 
-router.get('/machines/:id/queue', authMachine, MachineController.getAndMarkFirst);
-router.post('/machines/:id/queue', authMachine, MachineController.enqueue);
-router.delete('/machines/:id/queue', authMachine, MachineController.dequeue);
+router.get('/machines/:id/queue', authMachine(), MachineController.getAndMarkFirst);
+router.post('/machines/:id/queue', authUser(['admin', 'user']), MachineController.enqueue);
+router.delete('/machines/:id/queue', authMachine(), MachineController.dequeue);
 
 export default router;

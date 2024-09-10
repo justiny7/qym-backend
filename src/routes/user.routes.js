@@ -22,6 +22,7 @@ router.get('/workout-logs', authUser(['admin', 'user']), UserController.getUserW
 router.put('/workout-logs/:id/', authUser(['admin', 'user']), UserController.updateWorkoutLogWithSets);
 router.patch('/workout-logs/:id', authUser(['admin', 'user']), UserController.disassociateWorkoutLog);
 
+router.get('/queue', authUser(['admin', 'user']), UserController.getQueueSpot);
 router.delete('/queue', authUser(['admin', 'user']), UserController.dequeue);
 
 

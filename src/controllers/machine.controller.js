@@ -5,8 +5,7 @@ class MachineController {
   // Create a new machine
   static async createMachine(req, res) {
     try {
-      const machineData = req.body;
-      const newMachine = await MachineService.createMachine(machineData);
+      const newMachine = await MachineService.createMachine(req.body);
       res.status(201).json(newMachine);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -16,8 +15,7 @@ class MachineController {
   // Get a machine by ID
   static async getMachineById(req, res) {
     try {
-      const { id } = req.params;
-      const machine = await MachineService.getMachineById(id);
+      const machine = await MachineService.getMachineById(req.params.id);
       res.status(200).json(machine);
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -27,9 +25,7 @@ class MachineController {
   // Update a machine by ID
   static async updateMachine(req, res) {
     try {
-      const { id } = req.params;
-      const updateData = req.body;
-      const updatedMachine = await MachineService.updateMachine(id, updateData);
+      const updatedMachine = await MachineService.updateMachine(req.params.id, req.body);
       res.status(200).json(updatedMachine);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -39,8 +35,7 @@ class MachineController {
   // Delete a machine by ID
   static async deleteMachine(req, res) {
     try {
-      const { id } = req.params;
-      const message = await MachineService.deleteMachine(id);
+      const message = await MachineService.deleteMachine(req.params.id);
       res.status(200).json({ message });
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -60,8 +55,7 @@ class MachineController {
   // Get a machine's workout logs
   static async getMachineWorkoutLogs(req, res) {
     try {
-      const { id } = req.params;
-      const workoutLogs = await MachineService.getMachineWorkoutLogs(id);
+      const workoutLogs = await MachineService.getMachineWorkoutLogs(req.params.id);
       res.status(200).json(workoutLogs);
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -75,9 +69,8 @@ class MachineController {
    * @param {Object} res - The response object.
    */
   static async tagOn(req, res) {
-    const { id } = req.params;
     try {
-      const workoutLog = await MachineService.tagOn(req.user.id, id);
+      const workoutLog = await MachineService.tagOn(req.user.id, req.params.id);
       res.status(201).json(workoutLog);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -90,9 +83,8 @@ class MachineController {
    * @param {Object} res - The response object.
    */
   static async tagOff(req, res) {
-    const { id } = req.params;
     try {
-      const workoutLog = await MachineService.tagOff(req.user.id, id);
+      const workoutLog = await MachineService.tagOff(req.user.id, req.params.id);
       res.status(200).json(workoutLog);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -106,10 +98,8 @@ class MachineController {
    * @param {Object} res - The response object.
    */
   static async getAndMarkFirst(req, res) {
-    const { id } = req.params;
-
     try {
-      const firstInQueue = await MachineService.getAndMarkFirst(id);
+      const firstInQueue = await MachineService.getAndMarkFirst(req.params.id);
       if (!firstInQueue) {
         return res.status(404).json({ message: 'Queue is empty' });
       }
@@ -125,11 +115,8 @@ class MachineController {
    * @param {Object} res - The response object.
    */
   static async enqueue(req, res) {
-    const { id } = req.params;
-    const { userId } = req.body;
-
     try {
-      const queueItem = await MachineService.enqueue(userId, id);
+      const queueItem = await MachineService.enqueue(req.user.id, req.params.id);
       res.status(201).json(queueItem);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -142,10 +129,8 @@ class MachineController {
    * @param {Object} res - The response object.
    */
   static async dequeue(req, res) {
-    const { id } = req.params;
-
     try {
-      await MachineService.dequeue(id);
+      await MachineService.dequeue(req.params.id);
       res.status(200).json({ message: 'First item removed from queue' });
     } catch (error) {
       res.status(400).json({ error: error.message });

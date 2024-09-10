@@ -53,11 +53,8 @@ passport.use(new GoogleStrategy({
         googleId: profile.id,
         email: userEmail
       });
-    } else {
-      if (!user.googleId) {
-        user.googleId = profile.id;
-      }
-      await user.save();
+    } else if (!user.googleId) {
+      await user.update({ googleId: profile.id });
     }
     return done(null, user);
   } catch (err) {

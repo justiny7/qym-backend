@@ -68,6 +68,20 @@ class UserController {
   }
 
   /**
+   * Get a user's spot in a machine's queue.
+   * @param {Object} req - The request object containing the userId.
+   * @param {Object} res - The response object.
+   */
+  static async getQueueSpot(req, res) {
+    try {
+      const queueItem = await UserService.getQueueSpot(req.user.id);
+      res.status(200).json(queueItem);
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  }
+
+  /**
    * Removes a user from a machine's queue (dequeue operation).
    * @param {Object} req - The request object containing userId and machineId.
    * @param {Object} res - The response object.

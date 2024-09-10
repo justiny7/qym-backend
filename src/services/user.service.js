@@ -104,6 +104,24 @@ class UserService {
   }
 
   /**
+   * Get a user's spot in a machine's queue.
+   * @param {string} userId - The ID of the user.
+   * @returns {Promise<Object>} - The queue item associated with the user.
+   */
+  static async getQueueSpot(userId) {
+    try {
+      const queueItem = await QueueItem.findOne({ where: { userId } });
+      if (!queueItem) {
+        throw new Error('User is not in a queue');
+      }
+
+      return queueItem;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Removes a user from a machine's queue (dequeue operation).
    * @param {string} userId - The ID of the user.
    */

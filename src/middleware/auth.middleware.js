@@ -28,11 +28,12 @@ export const authMachine = () => {
   return (req, res, next) => {
     const apiKey = req.headers['authorization']?.split(' ')[1]; // Extract the key from "Bearer <key>"
     const validApiKey = process.env.INTERNAL_MACHINE_API_KEY;
+    console.log(apiKey, validApiKey);
 
     if (apiKey === validApiKey) {
       next();
     } else {
-      res.status(403).send('Forbidden');
+      res.status(403).json({ message: 'Forbidden'});
     }
   };
 }
