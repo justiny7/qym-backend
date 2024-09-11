@@ -126,6 +126,20 @@ class UserController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  /**
+   * Toggle user's gym session.
+   * @param {Object} req - The request object, containing the user ID and gym ID.
+   * @param {Object} res - The response object.
+   */
+  static async toggleGymSession(req, res) {
+    try {
+      const gymSession = await UserService.toggleGymSession(req.user.id, req.params.id);
+      res.status(200).json(gymSession);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 export default UserController;

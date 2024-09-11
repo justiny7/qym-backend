@@ -23,6 +23,9 @@ export default (sequelize) => {
         isEmail: true,  // Ensures that the email format is valid
       },
     },
+    address: {
+      type: DataTypes.STRING, // etc.
+    },
     phone: {
       type: DataTypes.STRING,
     },
@@ -35,7 +38,7 @@ export default (sequelize) => {
     },
     role: {
       type: DataTypes.ENUM('admin', 'user'),
-      defaultValue: 'user'
+      defaultValue: 'admin'
     },
     membershipStatus: {
       type: DataTypes.ENUM('Active', 'Inactive', 'Banned'),
@@ -44,6 +47,9 @@ export default (sequelize) => {
     currentWorkoutLogId: {
       type: DataTypes.UUID,
     },
+    currentGymSessionId: {
+      type: DataTypes.UUID,
+    }
   }, {
     timestamps: true,  // Adds createdAt and updatedAt fields
     defaultScope: {
@@ -61,6 +67,11 @@ export default (sequelize) => {
     User.hasOne(models.QueueItem, {
       foreignKey: 'userId',
       as: 'queueItem',
+    });
+
+    User.hasMany(models.Machine, {
+      foreignKey: 'gymId',
+      as: 'machines',
     });
   };
 

@@ -1,7 +1,7 @@
 // src/services/user.service.js
 import db from '../models/index.js';
 import { Op } from 'sequelize';
-const { User, WorkoutLog, Machine, WorkoutSet, QueueItem } = db;
+const { User, WorkoutLog, Machine, WorkoutSet, QueueItem, Gym } = db;
 
 class UserService {
   // Create a new user
@@ -182,54 +182,86 @@ class UserService {
     }
   }
 
-     /**
+  /**
    * Updates a WorkoutLog and its associated WorkoutSets.
    * @param {string} userId - The ID of the user.
    * @param {string} workoutLogId - The ID of the WorkoutLog.
    * @param {Array} workoutSets - The list of WorkoutSets to associate with the WorkoutLog.
    * @returns {Promise<Object>} - The updated WorkoutLog and associated WorkoutSets.
    */
-     static async updateWorkoutLogWithSets(userId, workoutLogId, workoutSets) {
-      const transaction = await db.sequelize.transaction({
-        isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
-      });
-  
-      try {
-        // Find the workout log
-        const workoutLog = await WorkoutLog.findByPk(workoutLogId, { transaction });
-        if (!workoutLog) {
-          throw new Error('WorkoutLog not found');
-        }
-        if (!workoutLog.userId) {
-          throw new Error('WorkoutLog is not associated with a user');
-        }
-        if (workoutLog.userId !== userId) {
-          throw new Error('User is not associated with this workout log');
-        }
-  
-        // Remove old workout sets associated with this workout log
-        await WorkoutSet.destroy({
-          where: { workoutLogId },
-          transaction,
-        });
-  
-        // Create new workout sets
-        const newWorkoutSets = await WorkoutSet.bulkCreate(
-          workoutSets.map((set) => ({
-            workoutLogId,
-            reps: set.reps,
-            weight: set.weight,
-          })),
-          { transaction }
-        );
-  
-        await transaction.commit();
-        return { workoutLog, workoutSets: newWorkoutSets };
-      } catch (error) {
-        await transaction.rollback();
-        throw error;
+  static async updateWorkoutLogWithSets(userId, workoutLogId, workoutSets) {
+    const transaction = await db.sequelize.transaction({
+      isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
+    });
+
+    try {
+      // Find the workout log
+      const workoutLog = await WorkoutLog.findByPk(workoutLogId, { transaction });
+      if (!workoutLog) {
+        throw new Error('WorkoutLog not found');
       }
+      if (!workoutLog.userId) {
+        throw new Error('WorkoutLog is not associated with a user');
+      }
+      if (workoutLog.userId !== userId) {
+        throw new Error('User is not associated with this workout log');
+      }
+
+      // Remove old workout sets associated with this workout log
+      await WorkoutSet.destroy({
+        where: { workoutLogId },
+        transaction,
+      });
+
+      // Create new workout sets
+      const newWorkoutSets = await WorkoutSet.bulkCreate(
+        workoutSets.map((set) => ({
+          workoutLogId,
+          reps: set.reps,
+          weight: set.weight,
+        })),
+        { transaction }
+      );
+
+      await transaction.commit();
+      return { workoutLog, workoutSets: newWorkoutSets };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
+  }
+
+  /**
+   * Toggles gym session (starts session if not in session, otherwise ends session).
+   * @param {string} userId - The ID of the user.
+   * @param {string} gymId - The ID of the gym.
+   * @returns {Promise<string>} - A message indicating the result of the operation.
+   */
+  static async toggleGymSession(userId, gymId) {
+    try {
+      const user = await User.findByPk(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      if (user.currentGymSessionId) {
+        if (user.currentGymSessionId === gymId) {
+          await user.update({ currentGymSessionId: null });
+          return 'Gym session ended';
+        }
+        throw new Error('User is already in a gym session');
+      }
+
+      const gym = await User.findByPk(gymId);
+      if (!gym || gym.role !== 'admin') {
+        throw new Error('Gym not found');
+      }
+
+      await user.update({ currentGymSessionId: gymId });
+      return 'Gym session started';
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 export default UserService;

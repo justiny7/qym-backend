@@ -59,7 +59,7 @@ class AuthController {
   };
   
   static async register(req, res) {
-    const { email, password, name } = req.body;
+    const { email, password, name, role } = req.body;
   
     try {
       // Check if the user already exists
@@ -75,6 +75,7 @@ class AuthController {
       const newUser = await User.create({
         name,
         email,
+        role,
         password: hashedPassword
       });
   

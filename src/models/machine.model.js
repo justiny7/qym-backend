@@ -49,6 +49,11 @@ export default (sequelize) => {
     },
   }, {
     timestamps: true,  // Adds createdAt and updatedAt timestamps
+    indexes: [
+      {
+        fields: ['gymId', 'id']
+      }
+    ]
   });
 
   Machine.associate = function(models) {
@@ -60,6 +65,12 @@ export default (sequelize) => {
     Machine.hasMany(models.QueueItem, {
       foreignKey: 'machineId',
       as: 'queueItems'
+    });
+
+    Machine.belongsTo(models.User, {
+      foreignKey: 'gymId',
+      as: 'gym',
+      allowNull: false
     });
   };
 
