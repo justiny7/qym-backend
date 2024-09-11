@@ -235,7 +235,7 @@ class MachineService {
     try {
       const firstInQueue = await QueueItem.findOne({
         where: { machineId },
-        order: [['timeEnqueued', 'ASC']],  // Order by creation time
+        order: [['timeEnqueued', 'ASC'], ['id', 'ASC']],  // Order by creation time
         include: [{ model: User, as: 'user' }]  // Include user details
       });
 
@@ -266,6 +266,13 @@ class MachineService {
         throw new Error('User is already in a queue.');
       }
 
+      // Check if machine queue capacity is reached
+      const queueSize = await QueueItem.count({ where: { machineId } });
+      const machine = await Machine.findByPk(machineId, { attributes: ['maximumQueueSize'] });
+      if (queueSize >= machine.maximumQueueSize) {
+        throw new Error('Queue is full.');
+      }
+
       // Create a new QueueItem for the machine
       const newQueueItem = await QueueItem.create({ userId, machineId });
       return newQueueItem;
@@ -284,7 +291,7 @@ class MachineService {
       // Find the first item in the queue
       const firstInQueue = await QueueItem.findOne({
         where: { machineId },
-        order: [['timeEnqueued', 'ASC']],
+        order: [['timeEnqueued', 'ASC'], ['id', 'ASC']],
       });
 
       if (!firstInQueue) {

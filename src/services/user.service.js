@@ -1,5 +1,6 @@
 // src/services/user.service.js
 import db from '../models/index.js';
+import { Op } from 'sequelize';
 const { User, WorkoutLog, Machine, WorkoutSet, QueueItem } = db;
 
 class UserService {
@@ -114,6 +115,20 @@ class UserService {
       if (!queueItem) {
         throw new Error('User is not in a queue');
       }
+
+      const position = await QueueItem.count({
+        where: {
+          machineId: queueItem.machineId,
+          [Op.or]: [
+            { timeEnqueued: { [Op.lt]: queueItem.timeEnqueued } },
+            {
+              timeEnqueued: queueItem.timeEnqueued,
+              id: { [Op.lt]: queueItem.id }
+            }
+          ]
+        }
+      });
+      await queueItem.update({ position: position + 1 });
 
       return queueItem;
     } catch (error) {

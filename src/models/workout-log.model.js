@@ -10,7 +10,6 @@ export default (sequelize) => {
     },
     timeOfTagOff: {
       type: DataTypes.DATE,
-      allowNull: true,
     }
   }, {
     timestamps: true,

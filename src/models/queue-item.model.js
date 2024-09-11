@@ -10,15 +10,17 @@ export default (sequelize) => {
     },
     timeReachedFront: {
       type: DataTypes.DATE,
-      allowNull: true,
     },
+    position: {
+      type: DataTypes.INTEGER, // calculated on GET request
+    }
   }, {
     timestamps: true,
     updatedAt: false,
     createdAt: 'timeEnqueued',
     indexes: [
       {
-        fields: ['machineId', 'timeEnqueued']
+        fields: ['machineId', 'timeEnqueued', 'id']
       },
       {
         fields: ['userId']

@@ -29,6 +29,10 @@ export default (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 1200, // default 20 minutes
     },
+    maximumQueueSize: {
+      type: DataTypes.INTEGER,
+      defaultValue: 15,
+    },
     maintenanceStatus: {
       type: DataTypes.ENUM('Good', 'Needs Maintenance', 'Under Repair'),
       defaultValue: 'Good',
@@ -42,7 +46,6 @@ export default (sequelize) => {
     },
     currentWorkoutLogId: {
       type: DataTypes.UUID,
-      allowNull: true,
     },
   }, {
     timestamps: true,  // Adds createdAt and updatedAt timestamps

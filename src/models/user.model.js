@@ -14,7 +14,6 @@ export default (sequelize) => {
     },
     profilePicture: {
       type: DataTypes.STRING,  // URL or path to the profile picture
-      allowNull: true,
     },
     email: {
       type: DataTypes.STRING,
@@ -26,7 +25,6 @@ export default (sequelize) => {
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: true,
     },
     password: {
       type: DataTypes.STRING,
@@ -45,7 +43,6 @@ export default (sequelize) => {
     },
     currentWorkoutLogId: {
       type: DataTypes.UUID,
-      allowNull: true,
     },
   }, {
     timestamps: true,  // Adds createdAt and updatedAt fields

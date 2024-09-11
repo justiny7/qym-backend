@@ -7,7 +7,7 @@ const router = Router();
 
 // Admin routes (TODO: remove user from getAllMachines)
 router.get('/machines', authUser(['admin', 'user']), MachineController.getAllMachines);
-router.post('/machines', authUser(['admin']), MachineController.createMachine);
+router.post('/machines', authUser(['admin', 'user']), MachineController.createMachine);
 router.get('/machines/:id', authUser(['admin']), MachineController.getMachineById);
 router.put('/machines/:id', authUser(['admin']), MachineController.updateMachine);
 router.delete('/machines/:id', authUser(['admin']), MachineController.deleteMachine);
