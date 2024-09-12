@@ -67,6 +67,11 @@ export default (sequelize) => {
       as: 'queueItems'
     });
 
+    Machine.hasMany(models.MachineReport, {
+      foreignKey: 'machineId',
+      as: 'machineReports'
+    });
+
     Machine.belongsTo(models.User, {
       foreignKey: 'gymId',
       as: 'gym',

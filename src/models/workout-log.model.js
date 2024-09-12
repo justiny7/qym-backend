@@ -17,10 +17,10 @@ export default (sequelize) => {
     createdAt: 'timeOfTagOn',
     indexes: [
       {
-        fields: ['userId']
+        fields: ['userId', 'id']
       },
       {
-        fields: ['machineId']
+        fields: ['machineId', 'id']
       }
     ],
   });

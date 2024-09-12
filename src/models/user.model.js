@@ -51,7 +51,7 @@ export default (sequelize) => {
       type: DataTypes.UUID,
     }
   }, {
-    timestamps: true,  // Adds createdAt and updatedAt fields
+    timestamps: true,
     defaultScope: {
       attributes: { exclude: ['password'] },
     }

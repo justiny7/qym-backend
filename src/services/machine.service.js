@@ -1,6 +1,6 @@
 // src/services/machine.service.js
 import db from '../models/index.js';
-const { Machine, WorkoutLog, User, WorkoutSet, QueueItem } = db;
+const { Machine, WorkoutLog, User, WorkoutSet, QueueItem, MachineReport } = db;
 
 class MachineService {
   // Create a new machine
@@ -79,9 +79,9 @@ class MachineService {
    */
   static async getMachineWorkoutLogs(gymId, machineId) {
     try {
-      // Find the machine with its associated workout logs
       const machineWithLogs = await Machine.findOne({
         where: { id: machineId, gymId },
+        attributes: [],
         include: [
           {
             model: WorkoutLog,
@@ -93,18 +93,46 @@ class MachineService {
           },
         ],
       });
-
       if (!machineWithLogs) {
         throw new Error('Machine not found');
       }
 
       return machineWithLogs.workoutLogs;
     } catch (error) {
-      console.error('Error fetching machine workout logs:', error);
       throw error;
     }
   }
 
+  /**
+   * Retrieves a machine's workout log by ID along with the user and workout sets for the log.
+   * @param {string} gymId - The ID of the gym.
+   * @param {string} machineId - The ID of the machine.
+   * @param {string} logId - The ID of the workout log.
+   */
+  static async getMachineWorkoutLogById(gymId, machineId, logId) {
+    try {
+      const workoutLog = await WorkoutLog.findOne({
+        where: { id: logId, machineId },
+        include: [
+          {
+            model: Machine,
+            as: 'machine',
+            where: { id: machineId, gymId },
+            attributes: [],
+          },
+          { model: User, as: 'user' },
+          { model: WorkoutSet, as: 'workoutSets' },
+        ],
+      });
+      if (!workoutLog) {
+        throw new Error('Workout log not found or machine does not belong to the gym');
+      }
+
+      return workoutLog;
+    } catch (error) {
+      throw error;
+    }
+  }
 
   /**
    * Handles tagging on a user to a machine, creating a new workout log.
@@ -240,20 +268,21 @@ class MachineService {
   static async enqueue(userId, machineId, gymId) {
     try {
       // Check if the user already has a queueItem
-      const queueItem = await QueueItem.findOne({
-        where: { userId },
-      });
-
+      const queueItem = await QueueItem.findOne({ where: { userId } });
       if (queueItem) {
         throw new Error('User is already in a queue.');
       }
 
       // Check if machine queue capacity is reached
-      const queueSize = await QueueItem.count({ where: { machineId } });
       const machine = await Machine.findOne({
         where: { id: machineId, gymId },
         attributes: ['maximumQueueSize'],
       });
+      if (!machine) {
+        throw new Error('Machine not found.');
+      }
+
+      const queueSize = await QueueItem.count({ where: { machineId } });
       if (queueSize >= machine.maximumQueueSize) {
         throw new Error('Queue is full.');
       }
@@ -261,6 +290,33 @@ class MachineService {
       // Create a new QueueItem for the machine
       const newQueueItem = await QueueItem.create({ userId, machineId });
       return newQueueItem;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Gets all queue items for a machine.
+   * @param {string} gymId - The ID of the gym.
+   * @param {string} machineId - The ID of the machine.
+   */
+  static async getQueue(gymId, machineId) {
+    try {
+      const machine = await Machine.findOne({
+        where: { id: machineId, gymId },
+        attributes: ['id'],
+      });
+      if (!machine) {
+        throw new Error('Machine not found.');
+      }
+
+      const queueItems = await QueueItem.findAll({
+        where: { machineId },
+        include: [{ model: User, as: 'user' }],
+        order: [['timeEnqueued', 'ASC'], ['id', 'ASC']],
+      });
+
+      return queueItems;
     } catch (error) {
       throw error;
     }
@@ -308,6 +364,116 @@ class MachineService {
       }
 
       return firstInQueue || null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves all reports for a machine.
+   * @param {string} gymId - The ID of the gym.
+   * @param {string} machineId - The ID of the machine.
+   * @returns {Promise<Array>} - A list of machine reports.
+   */
+  static async getMachineReports(gymId, machineId) {
+    try {
+      const machineWithReports = await Machine.findOne({
+        where: { id: machineId, gymId },
+        attributes: [],
+        include: [
+          {
+            model: MachineReport,
+            as: 'machineReports',
+          },
+        ],
+      });
+      if (!machineWithReports) {
+        throw new Error('Machine not found');
+      }
+
+      return machineWithReports.machineReports;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves a machine report by ID.
+   * @param {string} gymId - The ID of the gym.
+   * @param {string} machineId - The ID of the machine.
+   * @param {string} reportId - The ID of the report.
+   * @returns {Promise<Object>} - The machine report.
+   */
+  static async getMachineReportById(gymId, machineId, reportId) {
+    try {
+      const machineReport = await MachineReport.findOne({
+        where: { id: reportId, machineId },
+        include: [
+          {
+            model: Machine,
+            as: 'machine',
+            where: { id: machineId, gymId },
+            attributes: [],
+          },
+        ],
+      });
+      if (!machineReport) {
+        throw new Error('Machine report not found or machine does not belong to the gym');
+      }
+
+      return machineReport;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a new machine report.
+   * @param {string} gymId - The ID of the gym.
+   * @param {string} machineId - The ID of the machine.
+   * @param {Object} reportData - The report data.
+   * @returns {Promise<Object>} - The new machine report.
+   */
+  static async createMachineReport(gymId, machineId, reportData) {
+    try {
+      const machine = await Machine.findOne({ where: { id: machineId, gymId } });
+      if (!machine) {
+        throw new Error('Machine not found');
+      }
+
+      const newReport = await MachineReport.create({ ...reportData, machineId });
+      return newReport;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Updates a machine report by ID.
+   * @param {string} gymId - The ID of the gym.
+   * @param {string} machineId - The ID of the machine.
+   * @param {string} reportId - The ID of the report.
+   * @param {Object} updateData - The updated report data.
+   */
+  static async updateMachineReport(gymId, machineId, reportId, updateData) {
+    try {
+      const machineReport = await MachineReport.findOne({
+        where: { id: reportId, machineId },
+        include: [
+          {
+            model: Machine,
+            as: 'machine',
+            where: { id: machineId, gymId },
+            attributes: [],
+          },
+        ],
+      });
+      if (!machineReport) {
+        throw new Error('Machine report not found');
+      }
+
+      await machineReport.update(updateData);
+      return machineReport;
     } catch (error) {
       throw error;
     }

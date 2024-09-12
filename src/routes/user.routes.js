@@ -20,6 +20,7 @@ router.delete('/profile', authUser(['admin', 'user']), UserController.deleteUser
 
 // User routes
 router.get('/workout-logs', authUser(['user']), UserController.getUserWorkoutLogs);
+router.get('/workout-logs/:id', authUser(['user']), UserController.getUserWorkoutLogById);
 router.put('/workout-logs/:id/', authUser(['user']), UserController.updateWorkoutLogWithSets);
 router.patch('/workout-logs/:id', authUser(['user']), UserController.disassociateWorkoutLog);
 

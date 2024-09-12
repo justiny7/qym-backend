@@ -68,6 +68,20 @@ class UserController {
   }
 
   /**
+   * Get a user's workout log by workout log ID.
+   * @param {Object} req - The request object containing the workout log ID.
+   * @param {Object} res - The response object.
+   */
+  static async getUserWorkoutLogById(req, res) {
+    try {
+      const workoutLog = await UserService.getUserWorkoutLogById(req.user.id, req.params.id);
+      res.status(200).json(workoutLog);
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  }
+
+  /**
    * Get a user's spot in a machine's queue.
    * @param {Object} req - The request object containing the userId.
    * @param {Object} res - The response object.
@@ -102,8 +116,7 @@ class UserController {
    */
   static async disassociateWorkoutLog(req, res) {
     try {
-      const { id } = req.params;
-      const workoutLog = await UserService.disassociateWorkoutLog(req.user.id, id);
+      const workoutLog = await UserService.disassociateWorkoutLog(req.user.id, req.params.id);
       res.status(200).json(workoutLog);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -116,11 +129,8 @@ class UserController {
    * @param {Object} res - The response object.
    */
   static async updateWorkoutLogWithSets(req, res) {
-    const { id } = req.params;
-    const { workoutSets } = req.body;
-
     try {
-      const result = await UserService.updateWorkoutLogWithSets(req.user.id, id, workoutSets);
+      const result = await UserService.updateWorkoutLogWithSets(req.user.id, req.params.id, req.body);
       res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });

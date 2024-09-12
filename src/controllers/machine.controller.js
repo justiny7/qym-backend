@@ -88,6 +88,20 @@ class MachineController {
     }
   }
 
+  /**
+   * Gets a machine's workout log by ID.
+   * @param {Object} req - The request object, containing the machine ID and workout log ID.
+   * @param {Object} res - The response object.
+   */
+  static async getMachineWorkoutLogById(req, res) {
+    try {
+      const workoutLog = await MachineService.getMachineWorkoutLogById(req.user.id, req.params.id, req.params.logId);
+      res.status(200).json(workoutLog);
+    } catch (error) {
+      res.status(404).json({ error: error.message });
+    }
+  }
+
 
   /**
    * Handles the HTTP request for tagging on to a machine.
@@ -132,6 +146,20 @@ class MachineController {
   }
 
   /**
+   * Retrieves all items in a machine's queue.
+   * @param {Object} req - The request object containing gymId and machineId.
+   * @param {Object} res - The response object.
+   */
+  static async getQueue(req, res) {
+    try {
+      const queue = await MachineService.getQueue(req.user.id, req.params.id);
+      res.status(200).json(queue);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
    * Removes the first item in a machine's queue (dequeue operation).
    * @param {Object} req - The request object containing machineId.
    * @param {Object} res - The response object.
@@ -145,22 +173,82 @@ class MachineController {
     }
   }
 
-    /**
+  /**
    * Retrieves the first item in a machine's queue. Updates the item's timeReachedFront.
    * @param {Object} req - The request object containing machineId.
    * @param {Object} res - The response object.
    */
-    static async getAndMarkFirst(req, res) {
-      try {
-        const firstInQueue = await MachineService.getAndMarkFirst(req.params.id);
-        if (!firstInQueue) {
-          return res.status(404).json({ message: 'Queue is empty' });
-        }
-        res.status(200).json(firstInQueue);
-      } catch (error) {
-        res.status(400).json({ error: error.message });
+  static async getAndMarkFirst(req, res) {
+    try {
+      const firstInQueue = await MachineService.getAndMarkFirst(req.params.id);
+      if (!firstInQueue) {
+        return res.status(404).json({ message: 'Queue is empty' });
       }
+      res.status(200).json(firstInQueue);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
+  }
+
+  /**
+   * Retrieves all of a machine's reports.
+   * @param {Object} req - The request object containing gymId and machineId.
+   * @param {Object} res - The response object.
+   */
+  static async getMachineReports(req, res) {
+    try {
+      const reports = await MachineService.getMachineReports(req.user.id, req.params.id);
+      res.status(200).json(reports);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Retrieves a machine's report by ID.
+   * @param {Object} req - The request object containing gymId, machineId, and reportId.
+   * @param {Object} res - The response object.
+   * @returns {Object} - The machine report.
+   */
+  static async getMachineReportById(req, res) {
+    try {
+      const report = await MachineService.getMachineReportById(req.user.id, req.params.id, req.params.reportId);
+      res.status(200).json(report);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Creates a new machine report.
+   * @param {Object} req - The request object containing gymId, machineId, and report data.
+   * @param {Object} res - The response object.
+   * @returns {Object} - The new machine report.
+   */
+  static async createMachineReport(req, res) {
+    try {
+      const gymId = req.user.role === 'admin' ? req.user.id : req.user.currentGymSessionId;
+      const newReport = await MachineService.createMachineReport(gymId, req.params.id, req.body);
+      res.status(201).json(newReport);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Updates a machine's report by ID.
+   * @param {Object} req - The request object containing gymId, machineId, reportId, and updated data.
+   * @param {Object} res - The response object.
+   * @returns {Object} - The updated machine report.
+   */
+  static async updateMachineReport(req, res) {
+    try {
+      const updatedReport = await MachineService.updateMachineReport(req.user.id, req.params.id, req.params.reportId, req.body);
+      res.status(200).json(updatedReport);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
 }
 
 export default MachineController;

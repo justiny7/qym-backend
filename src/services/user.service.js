@@ -80,25 +80,43 @@ class UserService {
   static async getUserWorkoutLogs(id) {
     try {
       // Find the user with their associated workout logs
-      const userWithLogs = await User.findOne({
-        where: { id },
+      const workoutLogs = await WorkoutLog.findAll({
+        where: { userId: id },
         include: [
-          {
-            model: WorkoutLog,
-            as: 'workoutLogs',
-            include: [
-              { model: Machine, as: 'machine' },  // Include machine information
-              { model: WorkoutSet, as: 'workoutSets' },  // Include associated workout sets
-            ],
-          },
+          { model: Machine, as: 'machine' },
+          { model: WorkoutSet, as: 'workoutSets' },
         ],
       });
-
-      if (!userWithLogs) {
+      if (!workoutLogs) {
         throw new Error('User not found');
       }
 
-      return userWithLogs.workoutLogs;
+      return workoutLogs;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves a user's workout log by ID along with the machine and workout sets for the log.
+   * @param {string} userId - The ID of the user.
+   * @param {string} workoutLogId - The ID of the workout log.
+   * @returns {Promise<Object>} - The workout log associated with the user.
+   */
+  static async getUserWorkoutLogById(userId, workoutLogId) {
+    try {
+      const workoutLog = await WorkoutLog.findOne({
+        where: { id: workoutLogId, userId },
+        include: [
+          { model: Machine, as: 'machine' },
+          { model: WorkoutSet, as: 'workoutSets' },
+        ],
+      });
+      if (!workoutLog) {
+        throw new Error('Workout log not found');
+      }
+
+      return workoutLog;
     } catch (error) {
       throw error;
     }
