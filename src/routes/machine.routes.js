@@ -32,7 +32,7 @@ router.patch('/machines/:id/workout-logs/current', authUser(['user']), MachineCo
 router.post('/machines/:id/queue', authUser(['user']), MachineController.enqueue);
 
 // Internal routes
-router.get('/machines/:id/queue/first', authMachine(), MachineController.getAndMarkFirst);
-router.delete('/machines/:id/queue/first', authMachine(), MachineController.dequeue);
+// router.get('/machines/:id/queue/first', authMachine(), MachineController.getAndMarkFirst);
+// router.delete('/machines/:id/queue/first', authMachine(), MachineController.dequeue);
 
 export default router;

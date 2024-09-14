@@ -1,6 +1,7 @@
 // src/services/user.service.js
 import db from '../models/index.js';
 import { Op } from 'sequelize';
+import { sendUserUpdate, sendQueueUpdate, broadcastQueueUpdate, broadcastMachineUpdates } from '../websocket.js';
 const { User, WorkoutLog, Machine, WorkoutSet, QueueItem, Gym } = db;
 
 class UserService {
@@ -127,6 +128,7 @@ class UserService {
    * @param {string} userId - The ID of the user.
    * @returns {Promise<Object>} - The queue item associated with the user.
    */
+  /*
   static async getQueueSpot(userId) {
     try {
       const queueItem = await QueueItem.findOne({ where: { userId } });
@@ -147,18 +149,21 @@ class UserService {
         }
       });
       await queueItem.update({ position: position + 1 });
+      sendQueueUpdate(userId, queueItem);
 
       return queueItem;
     } catch (error) {
       throw error;
     }
   }
+  */
 
   /**
    * Removes a user from a machine's queue (dequeue operation).
+   * @param {string} gymId - The ID of the gym.
    * @param {string} userId - The ID of the user.
    */
-  static async dequeue(userId) {
+  static async dequeue(gymId, userId) {
     try {
       // Check if the user already has a queueItem
       const queueItem = await QueueItem.findOne({ where: { userId } });
@@ -166,8 +171,21 @@ class UserService {
         throw new Error('User is not in a queue.');
       }
 
+      const machine = await Machine.findOne({
+        where: { id: queueItem.machineId, gymId },
+        attributes: ['id', 'queueSize']
+      });
+      if (!machine) {
+        throw new Error('Machine not found.');
+      }
+      
       // Remove the queueItem
       await queueItem.destroy();
+      await machine.update({ queueSize: machine.queueSize - 1 });
+      sendQueueUpdate(userId, null);
+      broadcastMachineUpdates(gymId, queueItem.machineId, { queueSize: machine.queueSize });
+      broadcastQueueUpdate(gymId, queueItem.machineId);
+
       return `User has been dequeued`;
     } catch (error) {
       throw error;
@@ -264,6 +282,7 @@ class UserService {
       if (user.gymId) {
         if (user.gymId === gymId) {
           await user.update({ gymId: null });
+          sendUserUpdate(userId, { gymId: null });
           return 'Gym session ended';
         }
         throw new Error('User is already in a gym session');
@@ -275,6 +294,7 @@ class UserService {
       }
 
       await user.update({ gymId });
+      sendUserUpdate(userId, { gymId });
       return 'Gym session started';
     } catch (error) {
       throw error;

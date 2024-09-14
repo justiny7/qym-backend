@@ -10,7 +10,6 @@ export function initializeWebSocket(server) {
 
   wss.on('connection', (ws, req) => {
     console.log('New WebSocket connection attempt');
-    ws.isAuthenticated = false;
 
     ws.on('message', (message) => {
       const data = JSON.parse(message);
@@ -19,10 +18,12 @@ export function initializeWebSocket(server) {
         const user = verifyWebSocketToken(data.token);
         if (user) {
           console.log('User authenticated:', user);
+
           ws.userId = user.id;
           ws.gymId = data.gymId;
           userSockets.set(user.id, ws);
-          sendMachineStatus(ws, data.gymId);
+
+          sendInitialStatus(ws, data.gymId, data.queuedMachineId);
         } else {
           ws.close();
         }
@@ -31,20 +32,20 @@ export function initializeWebSocket(server) {
   });
 }
 
-export async function broadcastMachineUpdates(gymId) {
-  if (!gymId) {
-    console.error('No gymId provided for machine status update');
+export async function broadcastMachineUpdates(gymId, machineId, update) {
+  if (!gymId || !machineId) {
+    console.error('No gymId or machineId provided for machine status update');
     return;
   }
   
-  const machines = await MachineService.getAllMachines(gymId);
   const message = JSON.stringify({
-    type: 'machineStatus',
-    data: machines
+    type: 'machineUpdate',
+    machineId,
+    data: update
   });
 
-  userSockets.forEach((ws) => {
-    if (ws.gymId === gymId) {
+  wss.clients.forEach((ws) => {
+    if (ws.gymId === gymId && ws.readyState === WebSocket.OPEN) {
       ws.send(message);
     }
   });
@@ -57,7 +58,31 @@ export function sendUserUpdate(userId, update) {
   }
 }
 
-async function sendMachineStatus(ws, gymId) {
+export async function broadcastQueueUpdate(gymId, machineId) {
+  const queueItems = await MachineService.getQueue(gymId, machineId);
+  const queuePositions = queueItems.reduce((acc, item, index) => {
+    acc[item.userId] = { ...item.dataValues, position: index + 1 };
+    return acc;
+  }, {});
+  
+  wss.clients.forEach((ws) => {
+    if (ws.gymId === gymId && ws.userId in queuePositions && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'queueUpdate', data: queuePositions[ws.userId] }));
+    }
+  });
+}
+
+export function sendQueueUpdate(userId, queueItem) {
+  const ws = userSockets.get(userId);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'queueUpdate', data: queueItem }));
+  }
+}
+
+async function sendInitialStatus(ws, gymId, queuedMachineId) {
   const machines = await MachineService.getAllMachines(gymId);
   ws.send(JSON.stringify({ type: 'machineStatus', gymId, data: machines }));
+  if (queuedMachineId) {
+    broadcastQueueUpdate(gymId, queuedMachineId);
+  }
 }

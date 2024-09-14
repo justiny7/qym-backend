@@ -29,6 +29,10 @@ export default (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 1200, // default 20 minutes
     },
+    queueSize: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
     maximumQueueSize: {
       type: DataTypes.INTEGER,
       defaultValue: 15,

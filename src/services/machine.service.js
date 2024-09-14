@@ -1,5 +1,6 @@
 // src/services/machine.service.js
 import db from '../models/index.js';
+import { broadcastMachineUpdates, sendUserUpdate, sendQueueUpdate, broadcastQueueUpdate } from '../websocket.js';
 const { Machine, WorkoutLog, User, WorkoutSet, QueueItem, MachineReport } = db;
 
 class MachineService {
@@ -7,6 +8,7 @@ class MachineService {
   static async createMachine(gymId, machineData) {
     try {
       const machine = await Machine.create({ ...machineData, gymId });
+      broadcastMachineUpdates(gymId, machine.id, machine);
       return machine;
     } catch (error) {
       throw new Error(`Error creating machine: ${error.message}`);
@@ -33,11 +35,11 @@ class MachineService {
       const [updated] = await Machine.update(updateData, {
         where: { id, gymId },
       });
-
       if (!updated) {
         throw new Error('Machine not found');
       }
 
+      broadcastMachineUpdates(gymId, id, updateData);
       return await this.getMachineById(gymId, id);
     } catch (error) {
       throw new Error(`Error updating machine: ${error.message}`);
@@ -55,7 +57,8 @@ class MachineService {
         throw new Error('Machine not found');
       }
 
-      return `Machine with ID ${id} has been deleted`;
+      broadcastMachineUpdates(gymId, id, null);
+      return `Machine has been deleted`;
     } catch (error) {
       throw new Error(`Error deleting machine: ${error.message}`);
     }
@@ -190,6 +193,9 @@ class MachineService {
       await machine.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
 
       await transaction.commit();
+      broadcastMachineUpdates(gymId, machine.id, machine);
+      sendUserUpdate(userId, { currentWorkoutLogId: workoutLog.id });
+
       return workoutLog;
     } catch (error) {
       await transaction.rollback();
@@ -251,6 +257,9 @@ class MachineService {
       await machine.update({ currentWorkoutLogId: null }, { transaction });
 
       await transaction.commit();
+      broadcastMachineUpdates(gymId, machine.id, machine);
+      sendUserUpdate(userId, { currentWorkoutLogId: null });
+
       return workoutLog;
     } catch (error) {
       await transaction.rollback();
@@ -276,19 +285,22 @@ class MachineService {
       // Check if machine queue capacity is reached
       const machine = await Machine.findOne({
         where: { id: machineId, gymId },
-        attributes: ['maximumQueueSize'],
+        attributes: ['id', 'queueSize', 'maximumQueueSize'],
       });
       if (!machine) {
         throw new Error('Machine not found.');
       }
 
-      const queueSize = await QueueItem.count({ where: { machineId } });
-      if (queueSize >= machine.maximumQueueSize) {
+      if (machine.queueSize >= machine.maximumQueueSize) {
         throw new Error('Queue is full.');
       }
 
       // Create a new QueueItem for the machine
       const newQueueItem = await QueueItem.create({ userId, machineId });
+      await machine.update({ queueSize: machine.queueSize + 1 });
+      broadcastMachineUpdates(gymId, machineId, { queueSize: machine.queueSize });
+      broadcastQueueUpdate(gymId, machineId);
+
       return newQueueItem;
     } catch (error) {
       throw error;
@@ -327,6 +339,7 @@ class MachineService {
    * @param {string} machineId - The ID of the machine.
    * @returns {Promise<void>} - Resolves when the first queue item is removed.
    */
+  /*
   static async dequeue(machineId) {
     try {
       // Find the first item in the queue
@@ -334,23 +347,25 @@ class MachineService {
         where: { machineId },
         order: [['timeEnqueued', 'ASC'], ['id', 'ASC']],
       });
-
       if (!firstInQueue) {
         throw new Error('Queue is empty.');
       }
 
       // Remove the first queue item
       await firstInQueue.destroy();
+      sendQueueUpdate(firstInQueue.userId, null);
     } catch (error) {
       throw error;
     }
   }
+  */
 
   /**
    * Retrieves the first item in a machine's queue based on creation time. Updates timeReachedFront attribute.
    * @param {string} machineId - The ID of the machine.
    * @returns {Promise<Object|null>} - The first queue item, or null if no item exists.
    */
+  /*
   static async getAndMarkFirst(machineId) {
     try {
       const firstInQueue = await QueueItem.findOne({
@@ -368,6 +383,7 @@ class MachineService {
       throw error;
     }
   }
+  */
 
   /**
    * Retrieves all reports for a machine.

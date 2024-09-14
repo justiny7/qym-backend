@@ -1,6 +1,5 @@
 // src/controllers/machine.controller.js
 import MachineService from '../services/machine.service.js';
-import { broadcastMachineUpdates } from '../websocket.js'; // Import this function
 
 class MachineController {
   /**
@@ -11,7 +10,6 @@ class MachineController {
   static async createMachine(req, res) {
     try {
       const newMachine = await MachineService.createMachine(req.user.gymId, req.body);
-      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(201).json(newMachine);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -40,7 +38,6 @@ class MachineController {
   static async updateMachine(req, res) {
     try {
       const updatedMachine = await MachineService.updateMachine(req.user.gymId, req.params.id, req.body);
-      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(200).json(updatedMachine);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -55,7 +52,6 @@ class MachineController {
   static async deleteMachine(req, res) {
     try {
       const message = await MachineService.deleteMachine(req.user.gymId, req.params.id);
-      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(200).json({ message });
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -113,7 +109,6 @@ class MachineController {
   static async tagOn(req, res) {
     try {
       const workoutLog = await MachineService.tagOn(req.user.id, req.params.id, req.user.gymId);
-      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(201).json(workoutLog);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -128,7 +123,6 @@ class MachineController {
   static async tagOff(req, res) {
     try {
       const workoutLog = await MachineService.tagOff(req.user.id, req.params.id, req.user.gymId);
-      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(200).json(workoutLog);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -168,6 +162,7 @@ class MachineController {
    * @param {Object} req - The request object containing machineId.
    * @param {Object} res - The response object.
    */
+  /*
   static async dequeue(req, res) {
     try {
       await MachineService.dequeue(req.params.id);
@@ -175,13 +170,14 @@ class MachineController {
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
-  }
+  }*/
 
   /**
    * Retrieves the first item in a machine's queue. Updates the item's timeReachedFront.
    * @param {Object} req - The request object containing machineId.
    * @param {Object} res - The response object.
    */
+  /*
   static async getAndMarkFirst(req, res) {
     try {
       const firstInQueue = await MachineService.getAndMarkFirst(req.params.id);
@@ -192,7 +188,7 @@ class MachineController {
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
-  }
+  }*/
 
   /**
    * Retrieves all of a machine's reports.

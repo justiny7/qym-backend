@@ -86,6 +86,7 @@ class UserController {
    * @param {Object} req - The request object containing the userId.
    * @param {Object} res - The response object.
    */
+  /*
   static async getQueueSpot(req, res) {
     try {
       const queueItem = await UserService.getQueueSpot(req.user.id);
@@ -94,15 +95,16 @@ class UserController {
       res.status(404).json({ error: error.message });
     }
   }
+  */
 
   /**
    * Removes a user from a machine's queue (dequeue operation).
-   * @param {Object} req - The request object containing userId and machineId.
+   * @param {Object} req - The request object containing userId and gymId.
    * @param {Object} res - The response object.
    */
   static async dequeue(req, res) {
     try {
-      const message = await UserService.dequeue(req.user.id);
+      const message = await UserService.dequeue(req.user.gymId, req.user.id);
       res.status(200).json({ message });
     } catch (error) {
       res.status(400).json({ error: error.message });

@@ -16,7 +16,6 @@ router.delete('/users/:id', authUser(['admin']), UserController.deleteUser);
 router.get('/profile', authUser(['admin', 'user']), UserController.getUserById);
 router.post('/profile', authUser(['admin', 'user']), UserController.updateUser);
 router.delete('/profile', authUser(['admin', 'user']), UserController.deleteUser);
-// router.get('/dashboard', authUser(['admin', 'user']), UserController.getDashboard);
 
 // User routes
 router.get('/workout-logs', authUser(['user']), UserController.getUserWorkoutLogs);
@@ -24,7 +23,7 @@ router.get('/workout-logs/:id', authUser(['user']), UserController.getUserWorkou
 router.put('/workout-logs/:id/', authUser(['user']), UserController.updateWorkoutLogWithSets);
 router.patch('/workout-logs/:id', authUser(['user']), UserController.disassociateWorkoutLog);
 
-router.get('/queue', authUser(['user']), UserController.getQueueSpot);
+// router.get('/queue', authUser(['user']), UserController.getQueueSpot);
 router.delete('/queue', authUser(['user']), UserController.dequeue);
 
 router.patch('/gyms/:id', authUser(['user']), UserController.toggleGymSession);

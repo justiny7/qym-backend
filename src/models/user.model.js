@@ -53,7 +53,16 @@ export default (sequelize) => {
   }, {
     timestamps: true,
     defaultScope: {
-      attributes: { exclude: ['password'] },
+      attributes: {
+        exclude: ['password'],
+      },
+      include: [
+        {
+          model: sequelize.models.QueueItem,
+          as: 'queueItem',
+          required: false,
+        }
+      ],
     }
   });
 
