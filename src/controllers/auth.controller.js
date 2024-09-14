@@ -2,24 +2,20 @@
 import passport from '../config/passport.config.js';
 import db from '../models/index.js';
 import { hashPassword } from '../utils/bcrypt.utils.js';
+import { generateWebSocketToken } from '../utils/websocket.utils.js';
 const { User } = db;
 
 class AuthController {
   static login(req, res, next) {
     passport.authenticate('local', (err, user, info) => {
-      if (err) {
-        return next(err); // Handle unexpected errors
-      }
+      if (err) return next(err);
       if (!user) {
-        // Store the failure message in the session
-        req.session.authMessage = info.message || 'Login failed';
-        return res.redirect('/login');
+        return res.status(401).json({ message: 'Login failed' });
       }
       req.logIn(user, (err) => {
-        if (err) {
-          return next(err); // Handle errors during login
-        }
-        return res.redirect('/dashboard');
+        if (err) return next(err);
+        const wsToken = generateWebSocketToken(user);
+        return res.json({ message: 'Login successful', wsToken });
       });
     })(req, res, next);
   }
@@ -32,19 +28,14 @@ class AuthController {
   
   static googleCallback(req, res, next) {
     passport.authenticate('google', (err, user, info) => {
-      if (err) {
-        return next(err); // Handle unexpected errors
-      }
+      if (err) return next(err);
       if (!user) {
-        // Store the failure message in the session
-        req.session.authMessage = info.message || 'Authentication failed';
-        return res.redirect('/login');
+        return res.status(401).json({ message: 'Authentication failed' });
       }
       req.logIn(user, (err) => {
-        if (err) {
-          return next(err); // Handle errors during login
-        }
-        return res.redirect('/dashboard');
+        if (err) return next(err);
+        const wsToken = generateWebSocketToken(user);
+        return res.json({ message: 'Login successful', wsToken });
       });
     })(req, res, next);
   }
@@ -78,6 +69,10 @@ class AuthController {
         role,
         password: hashedPassword
       });
+
+      if (role === 'admin') {
+        await newUser.update({ gymId: newUser.id });
+      }
   
       res.status(201).json({ message: 'User created successfully', user: newUser });
     } catch (err) {

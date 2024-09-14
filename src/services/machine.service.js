@@ -38,7 +38,7 @@ class MachineService {
         throw new Error('Machine not found');
       }
 
-      return await this.getMachineById(id);
+      return await this.getMachineById(gymId, id);
     } catch (error) {
       throw new Error(`Error updating machine: ${error.message}`);
     }
@@ -167,14 +167,14 @@ class MachineService {
         if ((now - currentWorkoutLog.timeOfTagOn) / 1000 <= machine.maximumSessionDuration) {
           throw new Error('Machine already tagged on.');
         } else {
-          await this.tagOff(currentWorkoutLog.userId, machineId);
+          await this.tagOff(currentWorkoutLog.userId, machineId, gymId);
         }
       }
 
       // If user is already tagged on, tag off first
       if (user.currentWorkoutLogId) {
         const currentWorkoutLog = await WorkoutLog.findByPk(user.currentWorkoutLogId, { transaction });
-        await this.tagOff(userId, currentWorkoutLog.machineId);
+        await this.tagOff(userId, currentWorkoutLog.machineId, gymId);
       }
 
       // Create a new workout log

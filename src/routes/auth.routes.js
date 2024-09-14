@@ -8,6 +8,6 @@ router.post('/login', AuthController.login);
 router.post('/register', AuthController.register);
 router.get('/auth/google', AuthController.googleLogin);
 router.get('/auth/google/callback', AuthController.googleCallback);
-router.get('/logout', AuthController.logout);
+router.post('/logout', AuthController.logout);
 
 export default router;

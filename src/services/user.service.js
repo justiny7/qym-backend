@@ -261,9 +261,9 @@ class UserService {
       if (!user) {
         throw new Error('User not found');
       }
-      if (user.currentGymSessionId) {
-        if (user.currentGymSessionId === gymId) {
-          await user.update({ currentGymSessionId: null });
+      if (user.gymId) {
+        if (user.gymId === gymId) {
+          await user.update({ gymId: null });
           return 'Gym session ended';
         }
         throw new Error('User is already in a gym session');
@@ -274,7 +274,7 @@ class UserService {
         throw new Error('Gym not found');
       }
 
-      await user.update({ currentGymSessionId: gymId });
+      await user.update({ gymId });
       return 'Gym session started';
     } catch (error) {
       throw error;

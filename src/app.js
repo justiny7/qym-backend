@@ -15,7 +15,10 @@ const app = express();
 // Middleware
 app.use(helmet()); // Security
 app.use(morgan('dev')); // Logging
-app.use(cors()); // Enable CORS
+app.use(cors({
+  origin: 'http://localhost:3001', // Your frontend URL
+  credentials: true,
+})); // Enable CORS
 app.use(bodyParser.json()); // Parse JSON bodies
 app.use(bodyParser.urlencoded({ extended: true })); // Parse URL-encoded bodies
 

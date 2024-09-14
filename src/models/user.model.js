@@ -47,7 +47,7 @@ export default (sequelize) => {
     currentWorkoutLogId: {
       type: DataTypes.UUID,
     },
-    currentGymSessionId: {
+    gymId: {
       type: DataTypes.UUID,
     }
   }, {

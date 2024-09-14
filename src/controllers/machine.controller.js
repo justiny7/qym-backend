@@ -1,5 +1,6 @@
 // src/controllers/machine.controller.js
 import MachineService from '../services/machine.service.js';
+import { broadcastMachineUpdates } from '../websocket.js'; // Import this function
 
 class MachineController {
   /**
@@ -9,7 +10,8 @@ class MachineController {
    */
   static async createMachine(req, res) {
     try {
-      const newMachine = await MachineService.createMachine(req.user.id, req.body);
+      const newMachine = await MachineService.createMachine(req.user.gymId, req.body);
+      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(201).json(newMachine);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -23,8 +25,7 @@ class MachineController {
    */
   static async getMachineById(req, res) {
     try {
-      const gymId = req.user.role === 'admin' ? req.user.id : req.user.currentGymSessionId;
-      const machine = await MachineService.getMachineById(gymId, req.params.id);
+      const machine = await MachineService.getMachineById(req.user.gymId, req.params.id);
       res.status(200).json(machine);
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -38,7 +39,8 @@ class MachineController {
    */
   static async updateMachine(req, res) {
     try {
-      const updatedMachine = await MachineService.updateMachine(req.user.id, req.params.id, req.body);
+      const updatedMachine = await MachineService.updateMachine(req.user.gymId, req.params.id, req.body);
+      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(200).json(updatedMachine);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -52,7 +54,8 @@ class MachineController {
    */
   static async deleteMachine(req, res) {
     try {
-      const message = await MachineService.deleteMachine(req.user.id, req.params.id);
+      const message = await MachineService.deleteMachine(req.user.gymId, req.params.id);
+      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(200).json({ message });
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -66,8 +69,7 @@ class MachineController {
    */
   static async getAllMachines(req, res) {
     try {
-      const gymId = req.user.role === 'admin' ? req.user.id : req.user.currentGymSessionId;
-      const machines = await MachineService.getAllMachines(gymId);
+      const machines = await MachineService.getAllMachines(req.user.gymId);
       res.status(200).json(machines);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -81,7 +83,7 @@ class MachineController {
    */
   static async getMachineWorkoutLogs(req, res) {
     try {
-      const workoutLogs = await MachineService.getMachineWorkoutLogs(req.user.id, req.params.id);
+      const workoutLogs = await MachineService.getMachineWorkoutLogs(req.user.gymId, req.params.id);
       res.status(200).json(workoutLogs);
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -95,7 +97,7 @@ class MachineController {
    */
   static async getMachineWorkoutLogById(req, res) {
     try {
-      const workoutLog = await MachineService.getMachineWorkoutLogById(req.user.id, req.params.id, req.params.logId);
+      const workoutLog = await MachineService.getMachineWorkoutLogById(req.user.gymId, req.params.id, req.params.logId);
       res.status(200).json(workoutLog);
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -110,7 +112,8 @@ class MachineController {
    */
   static async tagOn(req, res) {
     try {
-      const workoutLog = await MachineService.tagOn(req.user.id, req.params.id, req.user.currentGymSessionId);
+      const workoutLog = await MachineService.tagOn(req.user.id, req.params.id, req.user.gymId);
+      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(201).json(workoutLog);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -124,7 +127,8 @@ class MachineController {
    */
   static async tagOff(req, res) {
     try {
-      const workoutLog = await MachineService.tagOff(req.user.id, req.params.id, req.user.currentGymSessionId);
+      const workoutLog = await MachineService.tagOff(req.user.id, req.params.id, req.user.gymId);
+      broadcastMachineUpdates(req.user.gymId); // Broadcast update
       res.status(200).json(workoutLog);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -138,7 +142,7 @@ class MachineController {
    */
   static async enqueue(req, res) {
     try {
-      const queueItem = await MachineService.enqueue(req.user.id, req.params.id, req.user.currentGymSessionId);
+      const queueItem = await MachineService.enqueue(req.user.id, req.params.id, req.user.gymId);
       res.status(201).json(queueItem);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -152,7 +156,7 @@ class MachineController {
    */
   static async getQueue(req, res) {
     try {
-      const queue = await MachineService.getQueue(req.user.id, req.params.id);
+      const queue = await MachineService.getQueue(req.user.gymId, req.params.id);
       res.status(200).json(queue);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -197,7 +201,7 @@ class MachineController {
    */
   static async getMachineReports(req, res) {
     try {
-      const reports = await MachineService.getMachineReports(req.user.id, req.params.id);
+      const reports = await MachineService.getMachineReports(req.user.gymId, req.params.id);
       res.status(200).json(reports);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -212,7 +216,7 @@ class MachineController {
    */
   static async getMachineReportById(req, res) {
     try {
-      const report = await MachineService.getMachineReportById(req.user.id, req.params.id, req.params.reportId);
+      const report = await MachineService.getMachineReportById(req.user.gymId, req.params.id, req.params.reportId);
       res.status(200).json(report);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -227,8 +231,7 @@ class MachineController {
    */
   static async createMachineReport(req, res) {
     try {
-      const gymId = req.user.role === 'admin' ? req.user.id : req.user.currentGymSessionId;
-      const newReport = await MachineService.createMachineReport(gymId, req.params.id, req.body);
+      const newReport = await MachineService.createMachineReport(req.user.gymId, req.params.id, req.body);
       res.status(201).json(newReport);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -243,7 +246,7 @@ class MachineController {
    */
   static async updateMachineReport(req, res) {
     try {
-      const updatedReport = await MachineService.updateMachineReport(req.user.id, req.params.id, req.params.reportId, req.body);
+      const updatedReport = await MachineService.updateMachineReport(req.user.gymId, req.params.id, req.params.reportId, req.body);
       res.status(200).json(updatedReport);
     } catch (error) {
       res.status(400).json({ error: error.message });
