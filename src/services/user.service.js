@@ -1,7 +1,6 @@
 // src/services/user.service.js
 import db from '../models/index.js';
-import { Op } from 'sequelize';
-import { sendUserUpdate, sendQueueUpdate, broadcastQueueUpdate, broadcastMachineUpdates } from '../websocket.js';
+import * as WS from '../websocket.js';
 const { User, WorkoutLog, Machine, WorkoutSet, QueueItem, Gym } = db;
 
 class UserService {
@@ -182,9 +181,10 @@ class UserService {
       // Remove the queueItem
       await queueItem.destroy();
       await machine.update({ queueSize: machine.queueSize - 1 });
-      sendQueueUpdate(userId, null);
-      broadcastMachineUpdates(gymId, queueItem.machineId, { queueSize: machine.queueSize });
-      broadcastQueueUpdate(gymId, queueItem.machineId);
+      WS.sendQueueUpdate(userId, null);
+      WS.broadcastMachineUpdates(gymId, queueItem.machineId, { queueSize: machine.queueSize });
+      WS.broadcastQueueUpdate(gymId, queueItem.machineId);
+      WS.clearCountdownNotification(userId);
 
       return `User has been dequeued`;
     } catch (error) {
@@ -282,7 +282,7 @@ class UserService {
       if (user.gymId) {
         if (user.gymId === gymId) {
           await user.update({ gymId: null });
-          sendUserUpdate(userId, { gymId: null });
+          WS.sendUserUpdate(userId, { gymId: null });
           return 'Gym session ended';
         }
         throw new Error('User is already in a gym session');
@@ -294,7 +294,7 @@ class UserService {
       }
 
       await user.update({ gymId });
-      sendUserUpdate(userId, { gymId });
+      WS.sendUserUpdate(userId, { gymId });
       return 'Gym session started';
     } catch (error) {
       throw error;

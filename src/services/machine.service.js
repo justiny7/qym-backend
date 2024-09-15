@@ -1,6 +1,7 @@
 // src/services/machine.service.js
 import db from '../models/index.js';
-import { broadcastMachineUpdates, sendUserUpdate, sendQueueUpdate, broadcastQueueUpdate } from '../websocket.js';
+import * as WS from '../websocket.js';
+import UserService from './user.service.js';
 const { Machine, WorkoutLog, User, WorkoutSet, QueueItem, MachineReport } = db;
 
 class MachineService {
@@ -8,7 +9,7 @@ class MachineService {
   static async createMachine(gymId, machineData) {
     try {
       const machine = await Machine.create({ ...machineData, gymId });
-      broadcastMachineUpdates(gymId, machine.id, machine);
+      WS.broadcastMachineUpdates(gymId, machine.id, machine);
       return machine;
     } catch (error) {
       throw new Error(`Error creating machine: ${error.message}`);
@@ -39,7 +40,7 @@ class MachineService {
         throw new Error('Machine not found');
       }
 
-      broadcastMachineUpdates(gymId, id, updateData);
+      WS.broadcastMachineUpdates(gymId, id, updateData);
       return await this.getMachineById(gymId, id);
     } catch (error) {
       throw new Error(`Error updating machine: ${error.message}`);
@@ -57,7 +58,7 @@ class MachineService {
         throw new Error('Machine not found');
       }
 
-      broadcastMachineUpdates(gymId, id, null);
+      WS.broadcastMachineUpdates(gymId, id, null);
       return `Machine has been deleted`;
     } catch (error) {
       throw new Error(`Error deleting machine: ${error.message}`);
@@ -154,7 +155,7 @@ class MachineService {
       const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
       const machine = await Machine.findOne({
         where: { id: machineId, gymId },
-        attributes: ['id', 'currentWorkoutLogId', 'maximumSessionDuration'],
+        attributes: ['id', 'currentWorkoutLogId', 'maximumSessionDuration', 'queueSize'],
         transaction
       });
       
@@ -167,10 +168,25 @@ class MachineService {
       if (machine.currentWorkoutLogId) {
         const currentWorkoutLog = await WorkoutLog.findByPk(machine.currentWorkoutLogId, { transaction });
         const now = new Date();
+
+        // Eventully, automatically tag off if session exceeds maximum duration
         if ((now - currentWorkoutLog.timeOfTagOn) / 1000 <= machine.maximumSessionDuration) {
           throw new Error('Machine already tagged on.');
         } else {
+          // TODO: Automatically tag off if session exceeds maximum duration
           await this.tagOff(currentWorkoutLog.userId, machineId, gymId);
+        }
+      }
+
+      // If machine has a queue, check if user is first in queue
+      let dequeueUser = false;
+      if (machine.queueSize > 0) {
+        const firstInQueue = await this.getFirstInQueue(machineId);
+        if (firstInQueue.userId !== userId) {
+          throw new Error('User is not first in queue.');
+        } else {
+          dequeueUser = true;
+          machine.queueSize -= 1;
         }
       }
 
@@ -179,6 +195,9 @@ class MachineService {
         const currentWorkoutLog = await WorkoutLog.findByPk(user.currentWorkoutLogId, { transaction });
         await this.tagOff(userId, currentWorkoutLog.machineId, gymId);
       }
+
+      // Clear any countdown notifications for the user
+      WS.clearCountdownNotification(userId);
 
       // Create a new workout log
       const workoutLog = await WorkoutLog.create({
@@ -193,8 +212,11 @@ class MachineService {
       await machine.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
 
       await transaction.commit();
-      broadcastMachineUpdates(gymId, machine.id, machine);
-      sendUserUpdate(userId, { currentWorkoutLogId: workoutLog.id });
+      WS.broadcastMachineUpdates(gymId, machine.id, machine);
+      WS.sendUserUpdate(userId, { currentWorkoutLogId: workoutLog.id });
+      if (dequeueUser) {
+        await UserService.dequeue(gymId, userId); // Delay dequeue until after transaction commit
+      }
 
       return workoutLog;
     } catch (error) {
@@ -257,8 +279,9 @@ class MachineService {
       await machine.update({ currentWorkoutLogId: null }, { transaction });
 
       await transaction.commit();
-      broadcastMachineUpdates(gymId, machine.id, machine);
-      sendUserUpdate(userId, { currentWorkoutLogId: null });
+      WS.broadcastMachineUpdates(gymId, machineId, machine);
+      WS.sendUserUpdate(userId, { currentWorkoutLogId: null });
+      WS.broadcastQueueUpdate(gymId, machineId);
 
       return workoutLog;
     } catch (error) {
@@ -285,12 +308,14 @@ class MachineService {
       // Check if machine queue capacity is reached
       const machine = await Machine.findOne({
         where: { id: machineId, gymId },
-        attributes: ['id', 'queueSize', 'maximumQueueSize'],
+        attributes: ['id', 'queueSize', 'maximumQueueSize', 'currentWorkoutLogId'],
       });
       if (!machine) {
         throw new Error('Machine not found.');
       }
-
+      if (!machine.currentWorkoutLogId && machine.queueSize === 0) {
+        throw new Error('Machine is open.');
+      }
       if (machine.queueSize >= machine.maximumQueueSize) {
         throw new Error('Queue is full.');
       }
@@ -298,10 +323,27 @@ class MachineService {
       // Create a new QueueItem for the machine
       const newQueueItem = await QueueItem.create({ userId, machineId });
       await machine.update({ queueSize: machine.queueSize + 1 });
-      broadcastMachineUpdates(gymId, machineId, { queueSize: machine.queueSize });
-      broadcastQueueUpdate(gymId, machineId);
+      WS.broadcastMachineUpdates(gymId, machineId, { queueSize: machine.queueSize });
+      WS.broadcastQueueUpdate(gymId, machineId);
 
       return newQueueItem;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Gets the first item in the queue for a machine.
+   * @param {string} machineId - The ID of the machine.
+   * @returns {Promise<Object>} - The first queue item.
+   */
+  static async getFirstInQueue(machineId) {
+    try {
+      const firstInQueue = await QueueItem.findOne({
+        where: { machineId },
+        order: [['timeEnqueued', 'ASC'], ['id', 'ASC']],
+      });
+      return firstInQueue;
     } catch (error) {
       throw error;
     }
