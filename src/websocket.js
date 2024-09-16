@@ -1,8 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import MachineService from './services/machine.service.js';
-import UserService from './services/user.service.js';
+import { getQueue, getMachineById, getAllMachines } from './services/machine.service.js';
 import { verifyWebSocketToken } from './utils/websocket.utils.js';
-import CountdownService from './services/countdown.service.js';
+import * as CountdownService from './services/countdown.service.js';
 
 let wss;
 const userSockets = new Map();
@@ -30,9 +29,10 @@ export function initializeWebSocket(server) {
           if (existingCountdown) {
             const now = Date.now();
             if (existingCountdown.endTime > now) {
-              await sendCountdownNotification(user.id, existingCountdown.machineId, existingCountdown.endTime);
+              const timeRemaining = Math.ceil((existingCountdown.endTime - now) / 1000);
+              sendCountdownNotification(user.id, existingCountdown.machineId, timeRemaining);
             } else {
-              await CountdownService.clearCountdown(user.id);
+              await clearCountdown(user.id);
             }
           }
 
@@ -72,22 +72,27 @@ export function sendUserUpdate(userId, update) {
 }
 
 export async function broadcastQueueUpdate(gymId, machineId) {
-  const queueItems = await MachineService.getQueue(gymId, machineId);
+  // Assign position to each user in the queue
+  const queueItems = await getQueue(gymId, machineId);
   const queuePositions = queueItems.reduce((acc, item, index) => {
     acc[item.userId] = { ...item.dataValues, position: index + 1 };
     return acc;
   }, {});
 
-  const machine = await MachineService.getMachineById(gymId, machineId);
-  wss.clients.forEach((ws) => {
-    if (ws.gymId === gymId && ws.userId in queuePositions && ws.readyState === WebSocket.OPEN) {
-      const data = queuePositions[ws.userId];
-      if (data.position === 1 && !machine.currentWorkoutLogId) {
-        sendCountdownNotification(ws.userId, machineId, Date.now() + 30000);
-      }
+  // Broadcast queue update to all users
+  const machine = await getMachineById(gymId, machineId);
+  for (const [userId, data] of Object.entries(queuePositions)) {
+    // If the user is in the first position and the machine is not currently being used, start the countdown
+    if (data.position === 1 && !machine.currentWorkoutLogId) {
+      startCountdown(userId, machineId, gymId, Date.now() + 30000);
+    }
+
+    // Send the queue update to the user if websocket is open
+    const ws = userSockets.get(userId);
+    if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'queueUpdate', data }));
     }
-  });
+  }
 }
 
 export function sendQueueUpdate(userId, queueItem) {
@@ -98,61 +103,35 @@ export function sendQueueUpdate(userId, queueItem) {
 }
 
 async function sendInitialStatus(ws, gymId, queuedMachineId) {
-  const machines = await MachineService.getAllMachines(gymId);
+  const machines = await getAllMachines(gymId);
   ws.send(JSON.stringify({ type: 'machineStatus', gymId, data: machines }));
   if (queuedMachineId) {
     broadcastQueueUpdate(gymId, queuedMachineId);
   }
 }
 
-export async function sendCountdownNotification(userId, machineId, endTime) {
-  const ws = userSockets.get(userId);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    if (ws.countdownIntervalId) {
-      return;
-    }
-
-    await CountdownService.setCountdown(userId, machineId, endTime);
-
-    const sendUpdate = () => {
-      const now = Date.now();
-      const remainingTime = Math.max(0, Math.ceil((endTime - now) / 1000));
-
-      ws.send(JSON.stringify({
-        type: 'countdownNotification',
-        data: {
-          machineId,
-          message: `Your turn! You have ${remainingTime} seconds to tag on.`,
-          remainingTime,
-          endTime
-        }
-      }));
-
-      if (remainingTime === 0) {
-        clearInterval(ws.countdownIntervalId);
-        delete ws.countdownIntervalId;
-        CountdownService.clearCountdown(userId);
-        UserService.dequeue(ws.gymId, userId);
-      }
-    };
-
-    sendUpdate(); // Send initial update
-    ws.countdownIntervalId = setInterval(sendUpdate, 1000);
+export async function startCountdown(userId, machineId, gymId, endTime) {
+  const countdown = await CountdownService.getCountdown(userId);
+  if (!countdown) {
+    await CountdownService.setCountdown(userId, machineId, gymId, endTime);
   }
 }
 
-// Add a function to clear the countdown if needed
-export function clearCountdownNotification(userId) {
+export async function clearCountdown(userId) {
+  await CountdownService.clearCountdown(userId);
+  sendCountdownNotification(userId, null, 0);
+}
+
+export async function sendCountdownNotification(userId, machineId, remainingTime) {
   const ws = userSockets.get(userId);
-  if (ws && ws.countdownIntervalId) {
-    clearInterval(ws.countdownIntervalId);
-    delete ws.countdownIntervalId;
-    
-    // Send a final message to clear the notification on the frontend
+  if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({
       type: 'countdownNotification',
-      data: null
+      data: {
+        machineId,
+        message: `Your turn! You have ${remainingTime} seconds to tag on.`,
+        remainingTime
+      }
     }));
   }
-  CountdownService.clearCountdown(userId);
 }

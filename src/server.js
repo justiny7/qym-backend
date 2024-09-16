@@ -4,6 +4,7 @@ import db from './models/index.js';
 import http from 'http';
 import { initializeWebSocket } from './websocket.js';
 import redisClient from './config/redis.config.js';
+import './workers/countdown.worker.js';
 
 import dotenv from 'dotenv';
 dotenv.config(); // Load environment variables

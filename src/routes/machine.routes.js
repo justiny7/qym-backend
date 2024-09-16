@@ -1,6 +1,6 @@
 // src/routes/machine.routes.js
 import { Router } from 'express'
-import MachineController from '../controllers/machine.controller.js';
+import * as MachineController from '../controllers/machine.controller.js';
 import { authUser, authMachine } from '../middleware/auth.middleware.js';
 
 const router = Router();
@@ -30,9 +30,5 @@ router.post('/machines/:id/workout-logs', authUser(['user']), MachineController.
 router.patch('/machines/:id/workout-logs/current', authUser(['user']), MachineController.tagOff);
 
 router.post('/machines/:id/queue', authUser(['user']), MachineController.enqueue);
-
-// Internal routes
-// router.get('/machines/:id/queue/first', authMachine(), MachineController.getAndMarkFirst);
-// router.delete('/machines/:id/queue/first', authMachine(), MachineController.dequeue);
 
 export default router;

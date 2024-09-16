@@ -1,6 +1,6 @@
 // src/routes/user.routes.js
 import { Router } from 'express'
-import UserController from '../controllers/user.controller.js';
+import * as UserController from '../controllers/user.controller.js';
 import { authUser } from '../middleware/auth.middleware.js';
 
 const router = Router();
@@ -23,10 +23,8 @@ router.get('/workout-logs/:id', authUser(['user']), UserController.getUserWorkou
 router.put('/workout-logs/:id/', authUser(['user']), UserController.updateWorkoutLogWithSets);
 router.patch('/workout-logs/:id', authUser(['user']), UserController.disassociateWorkoutLog);
 
-// router.get('/queue', authUser(['user']), UserController.getQueueSpot);
 router.delete('/queue', authUser(['user']), UserController.dequeue);
 
 router.patch('/gyms/:id', authUser(['user']), UserController.toggleGymSession);
-
 
 export default router;

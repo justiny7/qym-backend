@@ -8,9 +8,6 @@ export default (sequelize) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    timeReachedFront: {
-      type: DataTypes.DATE,
-    },
     position: {
       type: DataTypes.INTEGER, // calculated on GET request
     }
