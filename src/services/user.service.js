@@ -3,7 +3,8 @@ import db from '../models/index.js';
 import * as WS from '../websocket.js';
 import { tagOff } from './machine.service.js';
 const { User, WorkoutLog, Machine, WorkoutSet, QueueItem } = db;
-import { sendCountdownNotification } from '../websocket.js';
+import { sendTimerNotification } from '../websocket.js';
+import TimerService from './timer.service.js';
 
 // Create a new user
 export async function createUser(userData) {
@@ -147,6 +148,7 @@ export async function dequeue(gymId, userId) {
     // Remove the queueItem
     await queueItem.destroy();
     await machine.update({ queueSize: machine.queueSize - 1 });
+
     WS.sendQueueUpdate(userId, null);
     WS.broadcastMachineUpdates(gymId, queueItem.machineId, { queueSize: machine.queueSize });
     WS.broadcastQueueUpdate(gymId, queueItem.machineId);
@@ -256,10 +258,13 @@ export async function toggleGymSession(userId, gymId) {
         // If user is in a queue, dequeue them
         try {
           await dequeue(user.gymId, userId);
-          await sendCountdownNotification(userId, null, 0);
+          sendTimerNotification(userId, 'queueCountdown', 0, null);
         } catch {
           console.log('User is not in a queue');
         }
+
+        // Clear all timers for the user
+        await TimerService.clearAllTimersForUser(userId);
 
         // Update the user's gymId to null
         await user.update({ gymId: null });
@@ -274,6 +279,7 @@ export async function toggleGymSession(userId, gymId) {
       throw new Error('Gym not found');
     }
 
+    await TimerService.setTimer(userId, 'gymSessionEnding', { gymId }, 65 * 1000); // 1 hour
     await user.update({ gymId });
     WS.sendUserUpdate(userId, { gymId });
     return 'Gym session started';

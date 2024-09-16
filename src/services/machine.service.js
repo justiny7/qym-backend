@@ -2,6 +2,7 @@
 import db from '../models/index.js';
 import * as WS from '../websocket.js';
 import * as UserService from './user.service.js';
+import TimerService from './timer.service.js';
 const { Machine, WorkoutLog, User, WorkoutSet, QueueItem, MachineReport } = db;
 
 // Create a new machine
@@ -169,7 +170,7 @@ export async function tagOn(userId, machineId, gymId) {
       const now = new Date();
 
       // Eventully, automatically tag off if session exceeds maximum duration
-      if ((now - currentWorkoutLog.timeOfTagOn) / 1000 <= machine.maximumSessionDuration) {
+      if (now - currentWorkoutLog.timeOfTagOn <= machine.maximumSessionDuration) {
         throw new Error('Machine already tagged on.');
       } else {
         // TODO: Automatically tag off if session exceeds maximum duration
@@ -208,6 +209,9 @@ export async function tagOn(userId, machineId, gymId) {
     await machine.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
 
     await transaction.commit();
+    
+    await TimerService.setTimer(userId, 'machineTagOff', { machineId, gymId }, machine.maximumSessionDuration);
+    await TimerService.setTimer(userId, 'gymSessionEnding', { gymId }, 60 * 60 * 1000); // 1 hour
     WS.broadcastMachineUpdates(gymId, machine.id, machine);
     WS.sendUserUpdate(userId, { currentWorkoutLogId: workoutLog.id });
     if (dequeueUser) {
@@ -257,9 +261,9 @@ export async function tagOff(userId, machineId, gymId) {
     // Update the log with the tag off time
     await workoutLog.update({ timeOfTagOff: new Date() }, { transaction });
 
-    // Calculate the duration of workout and update machine's last ten sessions
-    const workoutDuration = (workoutLog.timeOfTagOff - workoutLog.timeOfTagOn) / 1000;
-    if (workoutDuration >= 60 && workoutDuration <= machine.maximumSessionDuration) {
+    // Calculate the duration of workout and update machine's last ten sessions (has to last at least a minute)
+    const workoutDuration = workoutLog.timeOfTagOff - workoutLog.timeOfTagOn;
+    if (workoutDuration >= 60 * 1000 && workoutDuration <= machine.maximumSessionDuration) {
       let lastTenSessions = [...machine.lastTenSessions];
       lastTenSessions.shift();
       lastTenSessions.push(workoutDuration);
@@ -276,6 +280,8 @@ export async function tagOff(userId, machineId, gymId) {
     await machine.update({ currentWorkoutLogId: null }, { transaction });
 
     await transaction.commit();
+
+    await TimerService.clearTimer(userId, 'machineTagOff');
     WS.broadcastMachineUpdates(gymId, machineId, machine);
     WS.sendUserUpdate(userId, { currentWorkoutLogId: null });
     WS.broadcastQueueUpdate(gymId, machineId);

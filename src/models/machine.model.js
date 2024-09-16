@@ -19,15 +19,15 @@ export default (sequelize) => {
     },
     averageUsageTime: {
       type: DataTypes.FLOAT,
-      defaultValue: 600, // 10 minutes to begin with (offset outliers)
+      defaultValue: 10 * 60 * 1000, // 10 minutes to begin with (offset outliers)
     },
     lastTenSessions: {
       type: DataTypes.ARRAY(DataTypes.FLOAT),
-      defaultValue: Array(10).fill(600), // 10 minutes to begin with
+      defaultValue: Array(10).fill(10 * 60 * 1000), // 10 minutes to begin with
     },
     maximumSessionDuration: {
       type: DataTypes.INTEGER,
-      defaultValue: 1200, // default 20 minutes
+      defaultValue: 20 * 60 * 1000, // default 20 minutes
     },
     queueSize: {
       type: DataTypes.INTEGER,
