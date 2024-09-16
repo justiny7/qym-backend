@@ -279,7 +279,7 @@ export async function toggleGymSession(userId, gymId) {
       throw new Error('Gym not found');
     }
 
-    await TimerService.setTimer(userId, 'gymSessionEnding', { gymId }, 65 * 1000); // 1 hour
+    await TimerService.setTimer(userId, 'gymSessionEnding', { gymId }, 60 * 60 * 1000); // 1 hour
     await user.update({ gymId });
     WS.sendUserUpdate(userId, { gymId });
     return 'Gym session started';
