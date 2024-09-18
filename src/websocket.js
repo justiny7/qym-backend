@@ -124,6 +124,16 @@ export async function clearCountdown(userId) {
   sendTimerNotification(userId, 'queueCountdown', 0, null);
 }
 
+export async function clearMachineTagOffCountdown(userId) {
+  await TimerService.clearTimer(userId, 'machineTagOff');
+  sendTimerNotification(userId, 'machineTagOff', 0, null);
+}
+
+export async function clearGymSessionEndingCountdown(userId) {
+  await TimerService.clearTimer(userId, 'gymSessionEnding');
+  sendTimerNotification(userId, 'gymSessionEnding', 0, null);
+}
+
 export function sendTimerNotification(userId, type, remainingTime, data) {
   const ws = userSockets.get(userId);
   if (ws && ws.readyState === WebSocket.OPEN) {

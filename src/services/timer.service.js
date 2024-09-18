@@ -16,21 +16,6 @@ class TimerService {
     const timerKey = `timer:${userId}:${type}`;
     await redisClient.set(timerKey, JSON.stringify({ ...data, endTime }));
     console.log(`Timer set: ${timerKey}, endTime: ${endTime}`);
-    
-    const jobId = this.getJobId(userId, type);
-    
-    // Schedule the new job
-    const job = await timerQueue.add(
-      'processTimer',
-      { userId, type, data, duration },
-      { 
-        jobId: jobId,
-        delay: duration,
-        removeOnComplete: true,
-        removeOnFail: true
-      }
-    );
-    console.log(`Job added: ${job.id}`);
 
     // Schedule warning timer if applicable
     if (type === 'machineTagOff') {
@@ -43,12 +28,12 @@ class TimerService {
   }
 
   static async setWarningTimer(userId, type, data, delay, warningDuration) {
-    const jobId = this.getJobId(userId, `${type}Warning`);
+    const jobId = this.getJobId(userId, `${type}`);
     try {
       console.log(`Setting warning timer for userId=${userId}, type=${type}, delay=${delay}, warningDuration=${warningDuration}`);
       const job = await timerQueue.add(
         'processWarningTimer',
-        { userId, type: type, data, warningDuration },
+        { userId, type, data, warningDuration },
         {
           jobId: jobId,
           delay: delay,
@@ -65,6 +50,9 @@ class TimerService {
 
   static async queueCountdownUpdate(userId, type, data, remainingTime) {
     if (remainingTime <= 0) {
+      // Not async to avoid double removals
+      this.processTimer(userId, type, data);
+      
       console.log(`Timer completed for userId=${userId}, type=${type}`);
       return;
     }
@@ -104,10 +92,8 @@ class TimerService {
     await redisClient.del(timerKey);
     console.log(`Timer cleared from Redis: ${timerKey}`);
 
-    await this.removeJob(this.getJobId(userId, type));
-    
     // Remove warnings/countdown updates
-    await this.removeJob(this.getJobId(userId, `${type}Warning`));
+    await this.removeJob(this.getJobId(userId, `${type}`));
     await this.removeJob(this.getJobId(userId, `${type}:update0`));
     await this.removeJob(this.getJobId(userId, `${type}:update1`));
   }

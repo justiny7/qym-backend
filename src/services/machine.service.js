@@ -5,7 +5,12 @@ import * as UserService from './user.service.js';
 import TimerService from './timer.service.js';
 const { Machine, WorkoutLog, User, WorkoutSet, QueueItem, MachineReport } = db;
 
-// Create a new machine
+/**
+ * Creates a new machine.
+ * @param {string} gymId - The ID of the gym.
+ * @param {Object} machineData - The data for the new machine.
+ * @returns {Promise<Machine>} - The created machine.
+ */
 export async function createMachine(gymId, machineData) {
   try {
     const machine = await Machine.create({ ...machineData, gymId });
@@ -16,7 +21,12 @@ export async function createMachine(gymId, machineData) {
   }
 }
 
-// Get a machine by ID
+/**
+ * Retrieves a machine by its ID.
+ * @param {string} gymId - The ID of the gym.
+ * @param {string} id - The ID of the machine.
+ * @returns {Promise<Machine>} - The machine with the specified ID.
+ */
 export async function getMachineById(gymId, id) {
   try {
     const machine = await Machine.findOne({ where: { id, gymId } });
@@ -30,7 +40,13 @@ export async function getMachineById(gymId, id) {
   }
 }
 
-// Update a machine by ID
+/**
+ * Updates a machine by its ID.
+ * @param {string} gymId - The ID of the gym.
+ * @param {string} id - The ID of the machine.
+ * @param {Object} updateData - The data to update.
+ * @returns {Promise<Machine>} - The updated machine.
+ */
 export async function updateMachine(gymId, id, updateData) {
   try {
     const [updated] = await Machine.update(updateData, {
@@ -47,7 +63,12 @@ export async function updateMachine(gymId, id, updateData) {
   }
 }
 
-// Delete a machine by ID
+/**
+ * Deletes a machine by its ID.
+ * @param {string} gymId - The ID of the gym.
+ * @param {string} id - The ID of the machine.
+ * @returns {Promise<string>} - A message indicating the machine has been deleted.
+ */
 export async function deleteMachine(gymId, id) {
   try {
     const deleted = await Machine.destroy({
@@ -65,7 +86,11 @@ export async function deleteMachine(gymId, id) {
   }
 }
 
-// Get all machines
+/**
+ * Retrieves all machines for a gym.
+ * @param {string} gymId - The ID of the gym.
+ * @returns {Promise<Array>} - A list of all machines in the gym.
+ */
 export async function getAllMachines(gymId) {
   try {
     const machines = await Machine.findAll({ where: { gymId } });
@@ -164,24 +189,15 @@ export async function tagOn(userId, machineId, gymId) {
       throw new Error('Invalid user or machine.');
     }
 
-    // If machine is already tagged on, tag off if session exceeds maximum duration
+    // If machine is already tagged on, throw error
     if (machine.currentWorkoutLogId) {
-      const currentWorkoutLog = await WorkoutLog.findByPk(machine.currentWorkoutLogId, { transaction });
-      const now = new Date();
-
-      // Eventully, automatically tag off if session exceeds maximum duration
-      if (now - currentWorkoutLog.timeOfTagOn <= machine.maximumSessionDuration) {
-        throw new Error('Machine already tagged on.');
-      } else {
-        // TODO: Automatically tag off if session exceeds maximum duration
-        await this.tagOff(currentWorkoutLog.userId, machineId, gymId);
-      }
+      throw new Error('Machine already tagged on.');
     }
 
     // If machine has a queue, check if user is first in queue
     let dequeueUser = false;
     if (machine.queueSize > 0) {
-      const firstInQueue = await this.getFirstInQueue(machineId);
+      const firstInQueue = await getFirstInQueue(machineId);
       if (firstInQueue.userId !== userId) {
         throw new Error('User is not first in queue.');
       } else {
@@ -193,7 +209,7 @@ export async function tagOn(userId, machineId, gymId) {
     // If user is already tagged on, tag off first
     if (user.currentWorkoutLogId) {
       const currentWorkoutLog = await WorkoutLog.findByPk(user.currentWorkoutLogId, { transaction });
-      await this.tagOff(userId, currentWorkoutLog.machineId, gymId);
+      await tagOff(userId, currentWorkoutLog.machineId, gymId);
     }
 
     // Create a new workout log
@@ -285,6 +301,7 @@ export async function tagOff(userId, machineId, gymId) {
     WS.broadcastMachineUpdates(gymId, machineId, machine);
     WS.sendUserUpdate(userId, { currentWorkoutLogId: null });
     WS.broadcastQueueUpdate(gymId, machineId);
+    WS.clearMachineTagOffCountdown(userId);
 
     return workoutLog;
   } catch (error) {

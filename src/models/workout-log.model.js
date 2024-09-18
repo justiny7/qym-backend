@@ -20,7 +20,13 @@ export default (sequelize) => {
         fields: ['userId', 'id']
       },
       {
+        fields: ['userId', 'timeOfTagOn']
+      },
+      {
         fields: ['machineId', 'id']
+      },
+      {
+        fields: ['machineId', 'timeOfTagOn']
       }
     ],
   });

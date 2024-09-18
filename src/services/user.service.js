@@ -6,7 +6,11 @@ const { User, WorkoutLog, Machine, WorkoutSet, QueueItem } = db;
 import { sendTimerNotification } from '../websocket.js';
 import TimerService from './timer.service.js';
 
-// Create a new user
+/**
+ * Creates a new user.
+ * @param {Object} userData - The data for the new user.
+ * @returns {Promise<User>} - The created user.
+ */
 export async function createUser(userData) {
   try {
     const newUser = await User.create(userData);
@@ -16,7 +20,11 @@ export async function createUser(userData) {
   }
 }
 
-// Get a user by ID
+/**
+ * Gets a user by their ID.
+ * @param {string} id - The ID of the user.
+ * @returns {Promise<User>} - The user with the specified ID.
+ */
 export async function getUserById(id) {
   try {
     const user = await User.findByPk(id);
@@ -30,7 +38,12 @@ export async function getUserById(id) {
   }
 }
 
-// Update a user by ID
+/**
+ * Updates a user by their ID.
+ * @param {string} id - The ID of the user.
+ * @param {Object} updateData - The data to update.
+ * @returns {Promise<User>} - The updated user.
+ */
 export async function updateUser(id, updateData) {
   try {
     const [updated] = await User.update(updateData, {
@@ -41,13 +54,17 @@ export async function updateUser(id, updateData) {
       throw new Error('User not found');
     }
 
-    return await this.getUserById(id);
+    return await getUserById(id);
   } catch (error) {
     throw error;
   }
 }
 
-// Delete a user by ID
+/**
+ * Deletes a user by their ID.
+ * @param {string} id - The ID of the user.
+ * @returns {Promise<string>} - A message indicating the user has been deleted.
+ */
 export async function deleteUser(id) {
   try {
     const deleted = await User.destroy({
@@ -64,7 +81,10 @@ export async function deleteUser(id) {
   }
 }
 
-// Get all users
+/**
+ * Retrieves all users.
+ * @returns {Promise<Array>} - A list of all users.
+ */
 export async function getAllUsers() {
   try {
     const users = await User.findAll();
@@ -269,6 +289,7 @@ export async function toggleGymSession(userId, gymId) {
         // Update the user's gymId to null
         await user.update({ gymId: null });
         WS.sendUserUpdate(userId, { gymId: null });
+        WS.clearGymSessionEndingCountdown(userId);
         return 'Gym session ended';
       }
       throw new Error('User is already in a gym session');
