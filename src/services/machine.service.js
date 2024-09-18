@@ -3,7 +3,44 @@ import db from '../models/index.js';
 import * as WS from '../websocket.js';
 import * as UserService from './user.service.js';
 import TimerService from './timer.service.js';
+import { Op } from 'sequelize';
+import { getMachineData, updateMachineData } from './redis.service.js';
 const { Machine, WorkoutLog, User, WorkoutSet, QueueItem, MachineReport } = db;
+
+const getPostgresMachineData = async (machineId) => {
+  try {
+    const machine = await Machine.findByPk(machineId);
+    const workoutLog = await WorkoutLog.findOne({
+      where: { machineId },
+      order: [['timeOfTagOn', 'DESC']],
+    });
+    const queueSize = await QueueItem.count({ where: { machineId } });
+    const lastTenLogs = await WorkoutLog.findAll({
+      where: { machineId, timeOfTagOff: { [Op.not]: null } },
+      order: [['timeOfTagOn', 'DESC']],
+      limit: 10,
+      attributes: ['timeOfTagOn', 'timeOfTagOff']
+    });
+    const lastTenSessions = lastTenLogs.map(log => {
+      const duration = log.timeOfTagOff - log.timeOfTagOn;
+      return duration;
+    });
+    const averageUsageTime = lastTenSessions.reduce((acc, duration) => {
+      return acc + duration;
+    }, 0) / lastTenSessions.length;
+
+    return {
+      currentWorkoutLogId: workoutLog ? workoutLog.id : null,
+      queueSize,
+      averageUsageTime: averageUsageTime,
+      lastTenSessions: lastTenSessions,
+      maximumSessionDuration: machine.maximumSessionDuration,
+      maximumQueueSize: machine.maximumQueueSize
+    };
+  } catch (error) {
+    throw error;
+  }
+};
 
 /**
  * Creates a new machine.
@@ -177,15 +214,16 @@ export async function tagOn(userId, machineId, gymId) {
 
   try {
     // Find the user and machine
-    const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
+    // const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
+    const currentWorkoutLogId = await UserService.getUserCurrentWorkoutLogId(userId);
     const machine = await Machine.findOne({
       where: { id: machineId, gymId },
       attributes: ['id', 'currentWorkoutLogId', 'maximumSessionDuration', 'queueSize'],
       transaction
     });
     
-    // Ensure both user and machine exist and are not tagged on
-    if (!user || !machine) {
+    // Ensure machine exists and are not tagged on
+    if (!machine) {
       throw new Error('Invalid user or machine.');
     }
 
@@ -207,8 +245,8 @@ export async function tagOn(userId, machineId, gymId) {
     }
 
     // If user is already tagged on, tag off first
-    if (user.currentWorkoutLogId) {
-      const currentWorkoutLog = await WorkoutLog.findByPk(user.currentWorkoutLogId, { transaction });
+    if (currentWorkoutLogId) {
+      const currentWorkoutLog = await WorkoutLog.findByPk(currentWorkoutLogId, { transaction });
       await tagOff(userId, currentWorkoutLog.machineId, gymId);
     }
 
@@ -221,7 +259,7 @@ export async function tagOn(userId, machineId, gymId) {
 
     
     // Update the user and machine with the current workout log ID
-    await user.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
+    await UserService.setUserCurrentWorkoutLogId(userId, workoutLog.id);
     await machine.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
 
     await transaction.commit();
@@ -256,20 +294,21 @@ export async function tagOff(userId, machineId, gymId) {
 
   try {
     // Find the user and machine
-    const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
+    const currentWorkoutLogId = await UserService.getUserCurrentWorkoutLogId(userId);
+    // const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
     const machine = await Machine.findOne({
       where: { id: machineId, gymId },
       attributes: ['id', 'currentWorkoutLogId', 'maximumSessionDuration', 'lastTenSessions'],
       transaction
     });
 
-    // Ensure both user and machine exist and have the same active workout log
-    if (!user || !machine || user.currentWorkoutLogId !== machine.currentWorkoutLogId) {
+    // Ensure machine exists and has the same active workout log as user
+    if (!machine || currentWorkoutLogId !== machine.currentWorkoutLogId) {
       throw new Error('Invalid user or machine for tagging off or current user and machine logs don\'t match.');
     }
 
     // Find the active workout log
-    const workoutLog = await WorkoutLog.findByPk(user.currentWorkoutLogId, { transaction });
+    const workoutLog = await WorkoutLog.findByPk(currentWorkoutLogId, { transaction });
     if (!workoutLog) {
       throw new Error('No active workout log found for tagging off.');
     }
@@ -292,7 +331,7 @@ export async function tagOff(userId, machineId, gymId) {
     }
 
     // Clear the current workout log ID on the user and machine
-    await user.update({ currentWorkoutLogId: null }, { transaction });
+    await UserService.setUserCurrentWorkoutLogId(userId, null);
     await machine.update({ currentWorkoutLogId: null }, { transaction });
 
     await transaction.commit();

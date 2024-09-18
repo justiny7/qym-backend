@@ -17,7 +17,11 @@ export async function getUserById(req, res) {
   try {
     const id = req.user.id || req.params.id;
     const user = await UserService.getUserById(id);
-    res.status(200).json(user);
+    const currentWorkoutLogId = await UserService.getUserCurrentWorkoutLogId(id);
+    res.status(200).json({
+      ...user.toJSON(),
+      currentWorkoutLogId
+    });
   } catch (error) {
     res.status(404).json({ error: error.message });
   }
