@@ -15,7 +15,7 @@ export const authUser = (roles) => {
       }
       res.status(403).json({ message: 'Unauthorized' });
     } else {
-      res.redirect('/login');
+      res.status(401).json({ message: 'Login failed' });
     }
   };
 }
