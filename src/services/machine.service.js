@@ -3,7 +3,70 @@ import db from '../models/index.js';
 import * as WS from '../websocket.js';
 import * as UserService from './user.service.js';
 import TimerService from './timer.service.js';
+import { Op } from 'sequelize';
+import { getMachineData, updateMachineData } from './redis.service.js';
 const { Machine, WorkoutLog, User, WorkoutSet, QueueItem, MachineReport } = db;
+
+export async function getPostgresMachineData(gymId, machineId) {
+  try {
+    const machine = await Machine.findOne({ where: { id: machineId, gymId } });
+    const workoutLog = await WorkoutLog.findOne({
+      where: { machineId },
+      order: [['timeOfTagOn', 'DESC']],
+    });
+    const queueSize = await QueueItem.count({ where: { machineId } });
+    const lastTenLogs = await WorkoutLog.findAll({
+      where: { machineId, timeOfTagOff: { [Op.not]: null } },
+      order: [['timeOfTagOn', 'DESC']],
+      limit: 10,
+      attributes: ['timeOfTagOn', 'timeOfTagOff']
+    });
+    const lastTenSessions = lastTenLogs.map(log => {
+      const duration = log.timeOfTagOff - log.timeOfTagOn;
+      return duration;
+    });
+    const averageUsageTime = lastTenSessions.reduce((acc, duration) => {
+      return acc + duration;
+    }, 10 * 60 * 1000) / Math.max(lastTenSessions.length, 1);
+
+    return {
+      currentWorkoutLogId: workoutLog && workoutLog.timeOfTagOff === null ? workoutLog.id : null,
+      queueSize,
+      averageUsageTime: averageUsageTime,
+      lastTenSessions: lastTenSessions,
+      maximumSessionDuration: machine.maximumSessionDuration,
+      maximumQueueSize: machine.maximumQueueSize
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+export async function getRedisMachineData(gymId, machineId) {
+  const machineData = await getMachineData(gymId, machineId);
+  if (!machineData) {
+    machineData = await getPostgresMachineData(gymId, machineId);
+    try {
+      await updateMachineData(gymId, machineId, machineData);
+    } catch (error) {
+      console.error('Redis connection error');
+    }
+  }
+  return machineData;
+};
+
+export async function syncRedisMachineData(gymId, machineId) {
+  const machineData = await getRedisMachineData(gymId, machineId);
+  const postgresMachineData = await getPostgresMachineData(gymId, machineId);
+  if (machineData !== postgresMachineData) {
+    try {
+      await updateMachineData(gymId, machineId, postgresMachineData);
+    } catch (error) {
+      console.error('Redis connection error');
+    }
+  }
+  return postgresMachineData;
+};
 
 /**
  * Creates a new machine.
@@ -171,44 +234,36 @@ export async function getMachineWorkoutLogById(gymId, machineId, logId) {
  * @returns {Promise<Object>} - The created WorkoutLog object.
  */
 export async function tagOn(userId, machineId, gymId) {
-  const transaction = await db.sequelize.transaction({
-    isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
-  });
-
   try {
     // Find the user and machine
-    const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
-    const machine = await Machine.findOne({
-      where: { id: machineId, gymId },
-      attributes: ['id', 'currentWorkoutLogId', 'maximumSessionDuration', 'queueSize'],
-      transaction
-    });
+    const currentWorkoutLogId = await UserService.getUserCurrentWorkoutLogId(userId);
+    const machineData = await getRedisMachineData(gymId, machineId);
     
-    // Ensure both user and machine exist and are not tagged on
-    if (!user || !machine) {
-      throw new Error('Invalid user or machine.');
+    // Ensure machine exists and are not tagged on
+    if (!machineData) {
+      throw new Error('Invalid machine.');
     }
 
     // If machine is already tagged on, throw error
-    if (machine.currentWorkoutLogId) {
+    if (machineData.currentWorkoutLogId) {
       throw new Error('Machine already tagged on.');
     }
 
     // If machine has a queue, check if user is first in queue
     let dequeueUser = false;
-    if (machine.queueSize > 0) {
+    if (machineData.queueSize > 0) {
       const firstInQueue = await getFirstInQueue(machineId);
       if (firstInQueue.userId !== userId) {
         throw new Error('User is not first in queue.');
       } else {
         dequeueUser = true;
-        machine.queueSize -= 1;
+        machineData.queueSize -= 1;
       }
     }
 
     // If user is already tagged on, tag off first
-    if (user.currentWorkoutLogId) {
-      const currentWorkoutLog = await WorkoutLog.findByPk(user.currentWorkoutLogId, { transaction });
+    if (currentWorkoutLogId) {
+      const currentWorkoutLog = await WorkoutLog.findByPk(currentWorkoutLogId);
       await tagOff(userId, currentWorkoutLog.machineId, gymId);
     }
 
@@ -217,27 +272,26 @@ export async function tagOn(userId, machineId, gymId) {
       userId,
       machineId,
       timeOfTagOn: new Date(),
-    }, { transaction });
-
+    });
     
     // Update the user and machine with the current workout log ID
-    await user.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
-    await machine.update({ currentWorkoutLogId: workoutLog.id }, { transaction });
+    await UserService.setUserCurrentWorkoutLogId(userId, workoutLog.id);
+    await updateMachineData(gymId, machineId, { currentWorkoutLogId: workoutLog.id });
 
-    await transaction.commit();
     
-    await TimerService.setTimer(userId, 'machineTagOff', { machineId, gymId }, machine.maximumSessionDuration);
+    await TimerService.setTimer(userId, 'machineTagOff', { machineId, gymId }, machineData.maximumSessionDuration);
     await TimerService.setTimer(userId, 'gymSessionEnding', { gymId }, 60 * 60 * 1000); // 1 hour
-    WS.broadcastMachineUpdates(gymId, machine.id, machine);
+
+    const newMachineData = await getRedisMachineData(gymId, machineId);
+    WS.broadcastMachineUpdates(gymId, machineId, newMachineData);
     WS.sendUserUpdate(userId, { currentWorkoutLogId: workoutLog.id });
     if (dequeueUser) {
-      await UserService.dequeue(gymId, userId); // Delay dequeue until after transaction commit
+      await UserService.dequeue(gymId, userId);
       WS.clearCountdown(userId);
     }
 
     return workoutLog;
   } catch (error) {
-    await transaction.rollback();
     throw error;
   }
 }
@@ -250,62 +304,53 @@ export async function tagOn(userId, machineId, gymId) {
  * @returns {Promise<Object>} - The updated WorkoutLog object.
  */
 export async function tagOff(userId, machineId, gymId) {
-  const transaction = await db.sequelize.transaction({
-    isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
-  });
-
   try {
     // Find the user and machine
-    const user = await User.findByPk(userId, { attributes: ['id', 'currentWorkoutLogId'], transaction });
-    const machine = await Machine.findOne({
-      where: { id: machineId, gymId },
-      attributes: ['id', 'currentWorkoutLogId', 'maximumSessionDuration', 'lastTenSessions'],
-      transaction
-    });
+    const currentWorkoutLogId = await UserService.getUserCurrentWorkoutLogId(userId);
+    const machineData = await getRedisMachineData(gymId, machineId);
 
-    // Ensure both user and machine exist and have the same active workout log
-    if (!user || !machine || user.currentWorkoutLogId !== machine.currentWorkoutLogId) {
+    // Ensure machine exists and has the same active workout log as user
+    if (!machineData || currentWorkoutLogId !== machineData.currentWorkoutLogId) {
       throw new Error('Invalid user or machine for tagging off or current user and machine logs don\'t match.');
     }
 
     // Find the active workout log
-    const workoutLog = await WorkoutLog.findByPk(user.currentWorkoutLogId, { transaction });
+    const workoutLog = await WorkoutLog.findByPk(currentWorkoutLogId);
     if (!workoutLog) {
       throw new Error('No active workout log found for tagging off.');
     }
 
     // Update the log with the tag off time
-    await workoutLog.update({ timeOfTagOff: new Date() }, { transaction });
+    await workoutLog.update({ timeOfTagOff: new Date() });
 
     // Calculate the duration of workout and update machine's last ten sessions (has to last at least a minute)
     const workoutDuration = workoutLog.timeOfTagOff - workoutLog.timeOfTagOn;
-    if (workoutDuration >= 60 * 1000 && workoutDuration <= machine.maximumSessionDuration) {
-      let lastTenSessions = [...machine.lastTenSessions];
+    if (workoutDuration >= 60 * 1000) {
+      let lastTenSessions = machineData.lastTenSessions;
       lastTenSessions.shift();
       lastTenSessions.push(workoutDuration);
       const averageUsageTime = lastTenSessions.reduce((acc, duration) => acc + duration, 0) / 10;
 
-      await machine.update({
+      await updateMachineData(gymId, machineId, {
         lastTenSessions,
         averageUsageTime,
-      }, { transaction });
+      });
     }
 
     // Clear the current workout log ID on the user and machine
-    await user.update({ currentWorkoutLogId: null }, { transaction });
-    await machine.update({ currentWorkoutLogId: null }, { transaction });
-
-    await transaction.commit();
-
+    await UserService.setUserCurrentWorkoutLogId(userId, null);
+    await updateMachineData(gymId, machineId, { currentWorkoutLogId: null });
+    
     await TimerService.clearTimer(userId, 'machineTagOff');
-    WS.broadcastMachineUpdates(gymId, machineId, machine);
+
+    const newMachineData = await getRedisMachineData(gymId, machineId);
+    WS.broadcastMachineUpdates(gymId, machineId, newMachineData);
     WS.sendUserUpdate(userId, { currentWorkoutLogId: null });
     WS.broadcastQueueUpdate(gymId, machineId);
     WS.clearMachineTagOffCountdown(userId);
 
     return workoutLog;
   } catch (error) {
-    await transaction.rollback();
     throw error;
   }
 }
@@ -326,24 +371,21 @@ export async function enqueue(userId, machineId, gymId) {
     }
 
     // Check if machine queue capacity is reached
-    const machine = await Machine.findOne({
-      where: { id: machineId, gymId },
-      attributes: ['id', 'queueSize', 'maximumQueueSize', 'currentWorkoutLogId'],
-    });
-    if (!machine) {
-      throw new Error('Machine not found.');
+    const machineData = await getRedisMachineData(gymId, machineId);
+    if (!machineData) {
+      throw new Error('Invalid machine.');
     }
-    if (!machine.currentWorkoutLogId && machine.queueSize === 0) {
+    if (!machineData.currentWorkoutLogId && machineData.queueSize === 0) {
       throw new Error('Machine is open.');
     }
-    if (machine.queueSize >= machine.maximumQueueSize) {
+    if (machineData.queueSize >= machineData.maximumQueueSize) {
       throw new Error('Queue is full.');
     }
 
     // Create a new QueueItem for the machine
     const newQueueItem = await QueueItem.create({ userId, machineId });
-    await machine.update({ queueSize: machine.queueSize + 1 });
-    WS.broadcastMachineUpdates(gymId, machineId, { queueSize: machine.queueSize });
+    await updateMachineData(gymId, machineId, { queueSize: machineData.queueSize + 1 });
+    WS.broadcastMachineUpdates(gymId, machineId, { queueSize: machineData.queueSize + 1 });
     WS.broadcastQueueUpdate(gymId, machineId);
 
     return newQueueItem;

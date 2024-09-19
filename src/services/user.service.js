@@ -1,10 +1,56 @@
 // src/services/user.service.js
 import db from '../models/index.js';
 import * as WS from '../websocket.js';
-import { tagOff } from './machine.service.js';
-const { User, WorkoutLog, Machine, WorkoutSet, QueueItem } = db;
+import { tagOff, getRedisMachineData } from './machine.service.js';
 import { sendTimerNotification } from '../websocket.js';
 import TimerService from './timer.service.js';
+import { setCurrentWorkoutLogId, getCurrentWorkoutLogId, updateMachineData } from './redis.service.js';
+const { User, WorkoutLog, Machine, WorkoutSet, QueueItem } = db;
+
+export const getUserCurrentWorkoutLogId = async (userId) => {
+  try {
+    let currentWorkoutLogId = await getCurrentWorkoutLogId(userId);
+    
+    if (currentWorkoutLogId === undefined) {
+      // If not in Redis, fetch from the database and set in Redis
+      const latestWorkoutLog = await WorkoutLog.findOne({
+        where: { userId },
+        order: [['timeOfTagOn', 'DESC']],
+      });
+      
+      currentWorkoutLogId = latestWorkoutLog && latestWorkoutLog.timeOfTagOff === null ? latestWorkoutLog.id : null;
+      await setCurrentWorkoutLogId(userId, currentWorkoutLogId);
+    }
+    
+    return currentWorkoutLogId;
+  } catch (error) {
+    console.error('Error getting current workout log ID:', error);
+    // If Redis is down, fall back to database query
+    const latestWorkoutLog = await WorkoutLog.findOne({
+      where: { userId },
+      order: [['timeOfTagOn', 'DESC']],
+    });
+    return latestWorkoutLog && latestWorkoutLog.timeOfTagOff === null ? latestWorkoutLog.id : null;
+  }
+};
+
+export const setUserCurrentWorkoutLogId = async (userId, workoutLogId) => {
+  try {
+    await setCurrentWorkoutLogId(userId, workoutLogId);
+  } catch (error) {
+    console.error('Error setting current workout log ID in Redis:', error);
+    // If Redis is down, we can't set the value, but the app can continue to function
+  }
+};
+
+export const clearUserCurrentWorkoutLogId = async (userId) => {
+  try {
+    await setCurrentWorkoutLogId(userId, null);
+  } catch (error) {
+    console.error('Error clearing current workout log ID in Redis:', error);
+    // If Redis is down, we can't clear the value, but the app can continue to function
+  }
+};
 
 /**
  * Creates a new user.
@@ -157,20 +203,17 @@ export async function dequeue(gymId, userId) {
       throw new Error('User is not in a queue.');
     }
 
-    const machine = await Machine.findOne({
-      where: { id: queueItem.machineId, gymId },
-      attributes: ['id', 'queueSize']
-    });
-    if (!machine) {
-      throw new Error('Machine not found.');
+    const machineData = await getRedisMachineData(gymId, queueItem.machineId);
+    if (!machineData) {
+      throw new Error('Machine data not found');
     }
     
     // Remove the queueItem
     await queueItem.destroy();
-    await machine.update({ queueSize: machine.queueSize - 1 });
+    await updateMachineData(gymId, queueItem.machineId, { queueSize: machineData.queueSize - 1 });
 
     WS.sendQueueUpdate(userId, null);
-    WS.broadcastMachineUpdates(gymId, queueItem.machineId, { queueSize: machine.queueSize });
+    WS.broadcastMachineUpdates(gymId, queueItem.machineId, { queueSize: machineData.queueSize - 1 });
     WS.broadcastQueueUpdate(gymId, queueItem.machineId);
     WS.clearCountdown(userId);
 
@@ -270,8 +313,9 @@ export async function toggleGymSession(userId, gymId) {
     if (user.gymId) {
       if (user.gymId === gymId) {
         // If the user is in a workout, tag them off
-        if (user.currentWorkoutLogId) {
-          const workoutLog = await WorkoutLog.findByPk(user.currentWorkoutLogId);
+        const workoutLogId = await getUserCurrentWorkoutLogId(userId);
+        if (workoutLogId) {
+          const workoutLog = await WorkoutLog.findByPk(workoutLogId);
           await tagOff(userId, workoutLog.machineId, user.gymId);
         }
 

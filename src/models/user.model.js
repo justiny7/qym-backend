@@ -44,9 +44,6 @@ export default (sequelize) => {
       type: DataTypes.ENUM('Active', 'Inactive', 'Banned'),
       defaultValue: 'Active',
     },
-    currentWorkoutLogId: {
-      type: DataTypes.UUID,
-    },
     gymId: {
       type: DataTypes.UUID,
     }

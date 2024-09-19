@@ -17,21 +17,9 @@ export default (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    averageUsageTime: {
-      type: DataTypes.FLOAT,
-      defaultValue: 10 * 60 * 1000, // 10 minutes to begin with (offset outliers)
-    },
-    lastTenSessions: {
-      type: DataTypes.ARRAY(DataTypes.FLOAT),
-      defaultValue: Array(10).fill(10 * 60 * 1000), // 10 minutes to begin with
-    },
     maximumSessionDuration: {
       type: DataTypes.INTEGER,
       defaultValue: 20 * 60 * 1000, // default 20 minutes
-    },
-    queueSize: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
     },
     maximumQueueSize: {
       type: DataTypes.INTEGER,
@@ -47,9 +35,6 @@ export default (sequelize) => {
     },
     manufacturerDetails: {
       type: DataTypes.JSONB,
-    },
-    currentWorkoutLogId: {
-      type: DataTypes.UUID,
     },
   }, {
     timestamps: true,  // Adds createdAt and updatedAt timestamps

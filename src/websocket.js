@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { getQueue, getMachineById, getAllMachines } from './services/machine.service.js';
+import { getQueue, getAllMachines, getRedisMachineData, syncRedisMachineData } from './services/machine.service.js';
 import { verifyWebSocketToken } from './utils/websocket.utils.js';
 import TimerService from './services/timer.service.js';
 
@@ -80,10 +80,10 @@ export async function broadcastQueueUpdate(gymId, machineId) {
   }, {});
 
   // Broadcast queue update to all users
-  const machine = await getMachineById(gymId, machineId);
+  const machineData = await getRedisMachineData(gymId, machineId);
   for (const [userId, data] of Object.entries(queuePositions)) {
     // If the user is in the first position and the machine is not currently being used, start the countdown
-    if (data.position === 1 && !machine.currentWorkoutLogId) {
+    if (data.position === 1 && !machineData.currentWorkoutLogId) {
       startCountdown(userId, machineId, gymId, 30000);
     }
 
@@ -105,6 +105,10 @@ export function sendQueueUpdate(userId, queueItem) {
 async function sendInitialStatus(ws, gymId, queuedMachineId) {
   const machines = await getAllMachines(gymId);
   ws.send(JSON.stringify({ type: 'machineStatus', gymId, data: machines }));
+  for (const machine of machines) {
+    const machineData = await syncRedisMachineData(gymId, machine.id);
+    ws.send(JSON.stringify({ type: 'machineUpdate', machineId: machine.id, data: machineData }));
+  }
   if (queuedMachineId) {
     broadcastQueueUpdate(gymId, queuedMachineId);
   }
