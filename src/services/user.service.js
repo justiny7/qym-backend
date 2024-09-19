@@ -1,10 +1,10 @@
 // src/services/user.service.js
 import db from '../models/index.js';
 import * as WS from '../websocket.js';
-import { tagOff } from './machine.service.js';
+import { tagOff, getRedisMachineData } from './machine.service.js';
 import { sendTimerNotification } from '../websocket.js';
 import TimerService from './timer.service.js';
-import { setCurrentWorkoutLogId, getCurrentWorkoutLogId } from './redis.service.js';
+import { setCurrentWorkoutLogId, getCurrentWorkoutLogId, updateMachineData } from './redis.service.js';
 const { User, WorkoutLog, Machine, WorkoutSet, QueueItem } = db;
 
 export const getUserCurrentWorkoutLogId = async (userId) => {
@@ -203,20 +203,17 @@ export async function dequeue(gymId, userId) {
       throw new Error('User is not in a queue.');
     }
 
-    const machine = await Machine.findOne({
-      where: { id: queueItem.machineId, gymId },
-      attributes: ['id', 'queueSize']
-    });
-    if (!machine) {
-      throw new Error('Machine not found.');
+    const machineData = await getRedisMachineData(gymId, queueItem.machineId);
+    if (!machineData) {
+      throw new Error('Machine data not found');
     }
     
     // Remove the queueItem
     await queueItem.destroy();
-    await machine.update({ queueSize: machine.queueSize - 1 });
+    await updateMachineData(gymId, queueItem.machineId, { queueSize: machineData.queueSize - 1 });
 
     WS.sendQueueUpdate(userId, null);
-    WS.broadcastMachineUpdates(gymId, queueItem.machineId, { queueSize: machine.queueSize });
+    WS.broadcastMachineUpdates(gymId, queueItem.machineId, { queueSize: machineData.queueSize - 1 });
     WS.broadcastQueueUpdate(gymId, queueItem.machineId);
     WS.clearCountdown(userId);
 
